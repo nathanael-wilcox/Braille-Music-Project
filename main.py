@@ -2,11 +2,12 @@
 #
 import partitura as pt
 
-Example = "FriendInMe.mid"
+Example = "Example_score.mxl"
 score = pt.load_score(Example)
 
 part = score.parts[0]
 print(part.pretty())
 
-pt.render(part)
+note_array = part.note_array()
 
+print(note_array)
