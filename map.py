@@ -22,58 +22,100 @@ sharpKeys = [{"type": "sharp", "note": 6}, {"type": "sharp", "note": 1}, {"type"
     "type": "sharp", "note": 3}, {"type": "sharp", "note": 10}, {"type": "sharp", "note": 5}, {"type": "sharp", "note": 0}]
 
 
-def shiftDown(code):  # Shifts a dot code down by one
-    newCode = ""
-    for c in code:
-        newCode += str(int(c) + 1)
-    return newCode
+class Key:
+    def __init__(self, type: str, note: int):
+        self.type = type
+        self.note = note
 
 
-def getChar(code):  # Returns the character value of the provided dot code(s)
-    arr = code.split()
-    str = ""
-    for c in arr:
-        str += chars[dots.index(c)]
-    return str
+# Example data - {"length": "half"}
+class Rest:
+    def __init__(self, length: str):
+        self.type = "rest"
+        self.length = length
 
 
-def getAscii(code):  # Returns the braille ascii character for the provided dot code(s)
-    arr = code.split()
-    str = ""
-    for c in arr:
-        str += ascii[dots.index(c)]
-    return str
+# Example data - {"length": "dotted quarter", "note": 35, "sign": "none"},
+#                {"length": "eighth", "note": 41, "sign": "flat"}
+class Note:
+    def __init__(self, length: str, note: int, sign: str):
+        self.type = "note"
+        self.length = length
+        self.note = note
+        self.sign = sign
 
 
-def makeNote(note, length, key):  # Combines note dot code with length code and checks for accidentals
-    for k in key:
-        if (note + 8) % 12 == k["note"]:
-            if k["type"] == "flat":
-                note += 1
-            elif k["type"] == "sharp":
-                note -= 1
-    chars = list(notes[(note + 8) % 12]) + list(lengths[length])
-    chars.sort()
-    return getChar("".join(chars))
+class Measure:
+    def __init__(self, number: int, data: list[Rest | Note]):
+        self.number = number
+        self.data = data
+
+    def addNote(self, note: Rest | Note):
+        self.data.append(note)
+
+    def print(self, printNumber: bool, lastNote: int, key: list[Key]):
+        str = ""
+        if printNumber:  # Prints the measure number if needed
+            str += getChar(symbols["number"]) + \
+                getChar(numbers[self.number]) + "  "
+        for d in self.data:  # For each item in the measure
+            length = d.length
+            type = d.type
+            if isinstance(d, Rest):
+                if len(length.split()) == 1:  # If length is just one word
+                    str += getChar(symbols[length[0] + "r"])
+                elif length.split()[0] == "dotted":  # If length has dotted in front
+                    str += getChar(symbols[length.split()[1][0] + "r"])
+                    str += getChar(symbols["dot"])
+            if isinstance(d, Note):
+                note = d.note
+                sign = d.sign
+                # If there is no last note or the last note was more than
+                # 8 half-steps away, print an octave marker
+                if lastNote < 0 or abs(note - lastNote) > 8:
+                    str += getChar(octaves[(note + 8) // 12])
+                # Else if the note is within 4 half-steps of the last note
+                # and is on a new octave print octave marker
+                elif abs(note - lastNote) > 4:
+                    if not (note + 8) // 12 == (lastNote + 8) // 12:
+                        str += getChar(octaves[(note + 8) // 12])
+
+                # Check for accidentals
+                if not sign == "none":
+                    if sign == "natural":
+                        # If note is natural, check for that note in the key signature and remove it
+                        key = [k for k in key if k.note != note]
+                        str += getChar(symbols[sign])
+                    else:
+                        # Append the new accidental to the key signature
+                        key.append(Key(sign, (note + 8) % 12))
+                        str += getChar(symbols[sign])
+
+                if len(length.split()) == 1:
+                    str += makeNote(note, length, key)
+                elif length.split()[0] == "dotted":
+                    str += makeNote(note, length.split()[1], key)
+                    str += getChar(symbols["dot"])
+
+                lastNote = note
+        return [lastNote, str]
 
 
-# Example key - [{"type": "flat", "note": 10}]
 # Example time - [3, 4]
-# Example measures - [new Measure(), new Measure()]
 class Song:
-    def __init__(self, key, time, measures):
+    def __init__(self, key: list[Key], time: list[int], measures: list[Measure]):
         self.key = key
         self.time = time
         self.measures = measures
         self.measureSize = 8  # Determines how many measures are on a line
 
-    def addMeasure(self, measure):
+    def addMeasure(self, measure: Measure):
         self.measures.append(measure)
 
-    def write(self, file):
+    def write(self, file: str):
         res = ""
         for k in self.key:  # Print every flat or sharp in the key signature
-            res += getChar(symbols[k["type"]])
+            res += getChar(symbols[k.type])
         # Print number sign and time signature
         res += getChar(symbols["number"])
         res += getChar(numbers[self.time[0]])
@@ -99,114 +141,102 @@ class Song:
             f.write(res)
 
 
-# Example number - 1
-# Example data - [{"type": "rest", "length": "half"},
-#                 {"type": "note", "length": "dotted quarter", "note": 35, "sign": "none"},
-#                 {"type": "note", "length": "eighth", "note": 41, "sign": "flat"}]
-class Measure:
-    def __init__(self, number, data):
-        self.number = number
-        self.data = data
+def shiftDown(code: str):  # Shifts a dot code down by one
+    newCode = ""
+    for c in code:
+        newCode += str(int(c) + 1)
+    return newCode
 
-    def addNote(self, note):
-        self.data.append(note)
 
-    def print(self, printNumber, lastNote, key):
-        str = ""
-        if printNumber:  # Prints the measure number if needed
-            str += getChar(symbols["number"]) + \
-                getChar(numbers[int(self.number)]) + "  "
-        for d in self.data:  # For each item in the measure
-            length = d["length"]
-            type = d["type"]
-            if type == "rest":
-                if len(length.split()) == 1:  # If length is just one word
-                    str += getChar(symbols[length[0] + "r"])
-                elif length.split()[0] == "dotted":  # If length has dotted in front
-                    str += getChar(symbols[length.split()[1][0] + "r"])
-                    str += getChar(symbols["dot"])
-            if type == "note":
-                note = d["note"]
-                sign = d["sign"]
-                # If there is no last note or the last note was more than
-                # 8 half-steps away, print an octave marker
-                if lastNote < 0 or abs(note - lastNote) > 8:
-                    str += getChar(octaves[(note + 8) // 12])
-                # Else if the note is within 4 half-steps of the last note
-                # and is on a new octave print octave marker
-                elif abs(note - lastNote) > 4:
-                    if not (note + 8) // 12 == (lastNote + 8) // 12:
-                        str += getChar(octaves[(note + 8) // 12])
+def getChar(code: str):  # Returns the character value of the provided dot code(s)
+    arr = code.split()
+    str = ""
+    for c in arr:
+        str += chars[dots.index(c)]
+    return str
 
-                # Check for accidentals
-                if not sign == "none":
-                    if sign == "natural":
-                        # If note is natural, check for that note in the key signature and remove it
-                        key = [k for k in key if k.get("note") != note]
-                        str += getChar(symbols[sign])
-                    else:
-                        # Append the new accidental to the key signature
-                        key.append(
-                            {"type": sign, "note": (note + 8) % 12})
-                        str += getChar(symbols[sign])
 
-                if len(length.split()) == 1:
-                    str += makeNote(note, length, key)
-                elif length.split()[0] == "dotted":
-                    str += makeNote(note, length.split()[1], key)
-                    str += getChar(symbols["dot"])
+def getAscii(code: str):  # Returns the braille ascii character for the provided dot code(s)
+    arr = code.split()
+    str = ""
+    for c in arr:
+        str += ascii[dots.index(c)]
+    return str
 
-                lastNote = note
-        return [lastNote, str]
+
+# Combines note dot code with length code and checks for accidentals
+def makeNote(note: int, length: str, key: list[Key]):
+    for k in key:
+        if (note + 8) % 12 == k.note:
+            if k.type == "flat":
+                note += 1
+            elif k.type == "sharp":
+                note -= 1
+    chars = list(notes[(note + 8) % 12]) + list(lengths[length])
+    chars.sort()
+    return getChar("".join(chars))
+
+
+def handleXML(input: str | None):
+    output: str = ""
+    if type(input) == str:
+        output = input
+    return output
 
 
 # Parsing the MusicXML file
-tree = ET.parse('test1.musicxml')
-root = tree.getroot()
+def parseFile(file: str):
+    tree = ET.parse(file)
+    root = tree.getroot()
 
-firstMeasure = root.findall("./part/measure/attributes")[0]
-beat = int(firstMeasure.findall("./time/beats")[0].text)
-beatType = int(firstMeasure.findall("./time/beat-type")[0].text)
-accidentals = int(firstMeasure.findall("./key/fifths")[0].text)
+    firstMeasure = root.findall("./part/measure/attributes")[0]
 
-# Add accidentals to key signature
-key = []
-if accidentals > 0:
-    i = 0
-    while i < abs(accidentals):
-        key.append(sharpKeys[i])
-        i += 1
-elif accidentals < 0:
-    i = 0
-    while i < abs(accidentals):
-        key.append(flatKeys[i])
-        i += 1
+    beat = int(handleXML(firstMeasure.findall("./time/beats")[0].text))
+    beatType = int(handleXML(firstMeasure.findall(
+        "./time/beat-type")[0].text))
+    accidentals = int(handleXML(firstMeasure.findall("./key/fifths")[0].text))
 
-song = Song(key, [beat, beatType], [])
+    # Add accidentals to key signature
+    key = []
+    if accidentals > 0:
+        i = 0
+        while i < abs(accidentals):
+            key.append(Key(sharpKeys[i]["type"], sharpKeys[i]["note"]))
+            i += 1
+    elif accidentals < 0:
+        i = 0
+        while i < abs(accidentals):
+            key.append(Key(flatKeys[i]["type"], flatKeys[i]["note"]))
+            i += 1
 
-for child in root.findall("./part/measure"):  # For each measure in XML
-    m = Measure(child.attrib["number"], [])
-    for c in child.findall("./note"):  # For each note
-        if c.findall("./pitch"):  # If note is a note
-            # Find absolute pitch value from octave and note name
-            pitch = int(c.findall("./pitch/octave")[0].text) * 12 - 8 \
-                + noteShift[c.findall("./pitch/step")[0].text]
-            sign = "none"
-            if c.findall("./accidental"):  # Check for accidental
-                sign = c.findall("./accidental")[0].text
-            if c.findall("./pitch/alter"):  # Check for pitch shift
-                pitch += int(c.findall("./pitch/alter")[0].text)
-            length = c.findall("./type")[0].text
-            if c.findall("./dot"):  # Check for dotted note
-                length = "dotted " + length
-            note = {"type": "note", "length": length,
-                    "note": pitch, "sign": sign}
-            m.addNote(note)
-        elif c.findall("./rest"):  # If note is a rest
-            note = {"type": "rest", "length": c.findall("./type")[0].text}
-            m.addNote(note)
-    song.addMeasure(m)
+    song = Song(key, [beat, beatType], [])
 
+    for child in root.findall("./part/measure"):  # For each measure in XML
+        m = Measure(int(child.attrib["number"]), [])
+        for c in child.findall("./note"):  # For each note
+            if c.findall("./pitch"):  # If note is a note
+                # Find absolute pitch value from octave and note name
+                pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
+                    + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
+                sign: str = "none"
+                if c.findall("./accidental"):  # Check for accidental
+                    sign = handleXML(c.findall("./accidental")[0].text)
+                if c.findall("./pitch/alter"):  # Check for pitch shift
+                    pitch += int(handleXML(c.findall("./pitch/alter")[0].text))
+                length: str = handleXML(c.findall("./type")[0].text)
+                if c.findall("./dot"):  # Check for dotted note
+                    length = "dotted " + length
+                note = Note(length, pitch, sign)
+                m.addNote(note)
+            elif c.findall("./rest"):  # If note is a rest
+                note = Rest(handleXML(c.findall("./type")[0].text))
+                m.addNote(note)
+        song.addMeasure(m)
+
+    return song
+
+
+song = parseFile('test1.musicxml')
 song.write("song.brf")
 
 # >allegretto,
