@@ -2,7 +2,10 @@
 #
 import partitura as pt
 
-Example = "Example_score.mxl"
+from map import Song
+from map import Measure
+
+Example = "Example_score.musicxml"
 score = pt.load_score(Example)
 
 part = score.parts[0]
