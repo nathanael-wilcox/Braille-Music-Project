@@ -1,3 +1,5 @@
+import xml.etree.ElementTree as ET
+
 asciiTable = {
     "": "\u2800",
     "1": "\u2801",
@@ -226,6 +228,35 @@ octaves = {
     8: "6 6"
 }
 
+noteShift = {
+    "C": 0,
+    "D": 2,
+    "E": 4,
+    "F": 5,
+    "G": 7,
+    "A": 9,
+    "B": 11
+}
+
+flatKeys = [
+    {"type": "flat", "note": 10},
+    {"type": "flat", "note": 3},
+    {"type": "flat", "note": 8},
+    {"type": "flat", "note": 1},
+    {"type": "flat", "note": 6},
+    {"type": "flat", "note": 11},
+    {"type": "flat", "note": 4}
+]
+
+sharpKeys = [
+    {"type": "sharp", "note": 6},
+    {"type": "sharp", "note": 1},
+    {"type": "sharp", "note": 8},
+    {"type": "sharp", "note": 3},
+    {"type": "sharp", "note": 10},
+    {"type": "sharp", "note": 5},
+    {"type": "sharp", "note": 0}
+]
 
 def shiftDown(code):
     newCode = ""
@@ -262,7 +293,7 @@ def printBraille(s):
 def printMult(s):
     arr = s.split()
     for c in arr:
-        print(charTable[c], end="")
+        print(asciiTable[c], end="")
 
 
 def makeNote(name, length):
@@ -288,7 +319,7 @@ def printNote(note, length, key):
                 note += 1
             elif k["type"] == "sharp":
                 note -= 1
-    print(charTable[makeNote((note + 8) % 12, length)], end="")
+    print(asciiTable[makeNote((note + 8) % 12, length)], end="")
 
 
 class Song:
@@ -298,12 +329,15 @@ class Song:
         self.measures = measures
         self.measureSize = 8
 
+    def addMeasure(self, measure):
+        self.measures.append(measure)
+
     def print(self):
         for k in self.key:
             printSymbol(symbols, k["type"])
         printSymbol(symbols, "number")
         printSymbol(numbers, self.time[0])
-        print(charTable[shiftDown(numbers[self.time[1]])], end="")
+        print(asciiTable[shiftDown(numbers[self.time[1]])], end="")
         print()
         i = 0
         lastNote = -1
@@ -323,6 +357,9 @@ class Measure:
     def __init__(self, number, data):
         self.number = number
         self.data = data
+
+    def addNote(self, note):
+        self.data.append(note)
 
     def print(self, printMeasure, lastNote, key):
         if printMeasure:
@@ -380,61 +417,82 @@ song = Song([{"type": "flat", "note": 10}, {
 song.print()
 
 
-m11 = Measure("1", [
-    {"type": "note", "length": "eighth", "note": 59, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 58, "sign": "sharp"},
-    {"type": "note", "length": "eighth", "note": 57, "sign": "natural"}
-])
-m12 = Measure("2", [
-    {"type": "note", "length": "eighth", "note": 56, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 55, "sign": "flat"},
-    {"type": "note", "length": "eighth", "note": 54, "sign": "none"}
-])
-m13 = Measure("3", [
-    {"type": "note", "length": "eighth", "note": 53, "sign": "flat"},
-    {"type": "note", "length": "eighth", "note": 52, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 51, "sign": "none"}
-])
-m14 = Measure("4", [
-    {"type": "note", "length": "eighth", "note": 52, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 47, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 52, "sign": "none"}
-])
+# m21 = Measure("1", [
+#     {"type": "note", "length": "half", "note": 52, "sign": "none"},
+# ])
+# m22 = Measure("2", [
+#     {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
+#     {"type": "note", "length": "quarter", "note": 50, "sign": "flat"},
+# ])
+# m23 = Measure("3", [
+#     {"type": "note", "length": "half", "note": 49, "sign": "none"},
+# ])
+# m24 = Measure("4", [
+#     {"type": "note", "length": "eighth", "note": 40, "sign": "none"},
+#     {"type": "note", "length": "eighth", "note": 45, "sign": "none"},
+#     {"type": "note", "length": "eighth", "note": 49, "sign": "none"},
+#     {"type": "note", "length": "eighth", "note": 52, "sign": "none"}
+# ])
+# m25 = Measure("5", [
+#     {"type": "note", "length": "half", "note": 52, "sign": "none"},
+# ])
+# m26 = Measure("6", [
+#     {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
+#     {"type": "note", "length": "quarter", "note": 52, "sign": "none"},
+# ])
+# m27 = Measure("7", [
+#     {"type": "note", "length": "half", "note": 54, "sign": "none"},
+# ])
+# m28 = Measure("8", [
+#     {"type": "note", "length": "half", "note": 49, "sign": "none"},
+# ])
 
-song2 = Song([], [3, 8], [m11, m12, m13, m14])
-song2.print()
+# song2 = Song([{"type": "flat", "note": 10}], [2, 4], [
+#              m21, m22, m23, m24, m25, m26, m27, m28])
+# song2.print()
 
 
-m21 = Measure("1", [
-    {"type": "note", "length": "half", "note": 52, "sign": "none"},
-])
-m22 = Measure("2", [
-    {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
-    {"type": "note", "length": "quarter", "note": 50, "sign": "flat"},
-])
-m23 = Measure("3", [
-    {"type": "note", "length": "half", "note": 49, "sign": "none"},
-])
-m24 = Measure("4", [
-    {"type": "note", "length": "eighth", "note": 40, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 35, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 49, "sign": "none"},
-    {"type": "note", "length": "eighth", "note": 52, "sign": "none"}
-])
-m25 = Measure("5", [
-    {"type": "note", "length": "half", "note": 52, "sign": "none"},
-])
-m26 = Measure("6", [
-    {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
-    {"type": "note", "length": "quarter", "note": 52, "sign": "none"},
-])
-m27 = Measure("7", [
-    {"type": "note", "length": "half", "note": 54, "sign": "none"},
-])
-m28 = Measure("8", [
-    {"type": "note", "length": "half", "note": 49, "sign": "none"},
-])
+tree = ET.parse('test2.musicxml')
+root = tree.getroot()
 
-song3 = Song([{"type": "flat", "note": 10}], [2, 4], [
-             m21, m22, m23, m24, m25, m26, m27, m28])
-song3.print()
+firstMeasure = root.findall("./part/measure/attributes")[0]
+beat = int(firstMeasure.findall("./time/beats")[0].text)
+beatType = int(firstMeasure.findall("./time/beat-type")[0].text)
+accidentals = int(firstMeasure.findall("./key/fifths")[0].text)
+
+key = []
+
+if accidentals > 0:
+    i = 0
+    while i < abs(accidentals):
+        key.append(sharpKeys[i])
+        i += 1
+elif accidentals < 0:
+    i = 0
+    while i < abs(accidentals):
+        key.append(flatKeys[i])
+        i += 1
+
+song = Song(key, [beat, beatType], [])
+
+for child in root.findall("./part/measure"):
+    m = Measure(child.attrib["number"], [])
+    for c in child.findall("./note"):
+        if c.findall("./pitch"):
+            pitch = int(c.findall("./pitch/octave")[0].text) * 12 - 8 + noteShift[c.findall("./pitch/step")[0].text]
+            sign = "none"
+            if c.findall("./accidental"):
+                sign = c.findall("./accidental")[0].text
+            if c.findall("./pitch/alter"):
+                pitch += int(c.findall("./pitch/alter")[0].text)
+            length = c.findall("./type")[0].text
+            if c.findall("./dot"):
+                length = "dotted " + length
+            note = {"type": "note", "length": length, "note": pitch, "sign": sign}
+            m.addNote(note)
+        elif c.findall("./rest"):
+            note = {"type": "rest", "length": c.findall("./type")[0].text}
+            m.addNote(note)
+    song.addMeasure(m)
+
+song.print()
