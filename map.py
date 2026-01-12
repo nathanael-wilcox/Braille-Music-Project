@@ -147,44 +147,6 @@ numbers = {
     9: "24"
 }
 
-dict = {
-    "a": "1",
-    "b": "12",
-    "c": "14",
-    "d": "145",
-    "e": "15",
-    "f": "124",
-    "g": "1245",
-    "h": "125",
-    "i": "24",
-    "j": "245",
-    "k": "13",
-    "l": "123",
-    "m": "134",
-    "n": "1345",
-    "o": "135",
-    "p": "1234",
-    "q": "12345",
-    "r": "1235",
-    "s": "234",
-    "t": "2345",
-    "u": "136",
-    "v": "1236",
-    "w": "2456",
-    "x": "1346",
-    "y": "13456",
-    "z": "1356",
-}
-
-punc = {
-    ",": "2",
-    ";": "23",
-    ":": "25",
-    ".": "256",
-    "?": "236",
-    "!": "235",
-}
-
 symbols = {
     "number": "3456",
     "sharp": "146",
@@ -264,36 +226,12 @@ def shiftDown(code):
         newCode += str(int(c) + 1)
     return newCode
 
-
-def printBraille(s):
-    isNumber = False
-    isSpace = False
-    for c in s:
-        if c in dict:
-            if isNumber and not isSpace:
-                print(asciiTable["56"], end="")
-            print(asciiTable[dict[c]], end="")
-            isNumber = False
-            isSpace = False
-        elif c in punc:
-            print(asciiTable[punc[c]], end="")
-        elif c.isdigit() and int(c) in numbers:
-            if not isNumber:
-                print(asciiTable[symbols["number"]], end="")
-            print(asciiTable[numbers[int(c)]], end="")
-            isNumber = True
-            isSpace = False
-        elif c == " ":
-            print(c, end="")
-            isNumber = False
-            isSpace = True
-    print()
-
-
 def printMult(s):
     arr = s.split()
+    str = ""
     for c in arr:
-        print(asciiTable[c], end="")
+        str += charTable[c]
+    return str
 
 
 def makeNote(name, length):
@@ -303,13 +241,14 @@ def makeNote(name, length):
 
 
 def printSymbol(dict, value):
-    printMult(dict[value])
+    return printMult(dict[value])
 
 
 def printNumber(num):
-    printSymbol(symbols, "number")
+    str = printSymbol(symbols, "number")
     for c in num:
-        printSymbol(numbers, int(c))
+        str += printSymbol(numbers, int(c))
+    return str
 
 
 def printNote(note, length, key):
@@ -319,7 +258,7 @@ def printNote(note, length, key):
                 note += 1
             elif k["type"] == "sharp":
                 note -= 1
-    print(asciiTable[makeNote((note + 8) % 12, length)], end="")
+    return charTable[makeNote((note + 8) % 12, length)]
 
 
 class Song:
@@ -327,30 +266,36 @@ class Song:
         self.key = key
         self.time = time
         self.measures = measures
-        self.measureSize = 8
+        self.measureSize = 4
 
     def addMeasure(self, measure):
         self.measures.append(measure)
 
     def print(self):
+        res = ""
         for k in self.key:
-            printSymbol(symbols, k["type"])
-        printSymbol(symbols, "number")
-        printSymbol(numbers, self.time[0])
-        print(asciiTable[shiftDown(numbers[self.time[1]])], end="")
-        print()
+            res += printSymbol(symbols, k["type"])
+        res += printSymbol(symbols, "number")
+        res += printSymbol(numbers, self.time[0])
+        res += charTable[shiftDown(numbers[self.time[1]])]
+        res += "\n"
         i = 0
         lastNote = -1
         for m in self.measures:
-            lastNote = m.print(i % self.measureSize == 0, lastNote, self.key)
+            mData = m.print(i % self.measureSize == 0, lastNote, self.key)
+            lastNote = mData[0]
+            res += mData[1]
             if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                print("   ", end="")
+                res += "  "
             elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                print()
+                res += "\n"
+                lastNote = -1
             i += 1
 
-        printSymbol(symbols, "db")
-        print()
+        res += printSymbol(symbols, "db")
+        res += "\n"
+        with open("song.brf", "w") as f:
+            f.write(res)
 
 
 class Measure:
@@ -362,59 +307,59 @@ class Measure:
         self.data.append(note)
 
     def print(self, printMeasure, lastNote, key):
+        str = ""
         if printMeasure:
-            printNumber(self.number)
-            print("   ", end="")
+            str = str + printNumber(self.number) + "  "
         for d in self.data:
             length = d["length"]
             if d["type"] == "rest":
                 if len(length.split()) == 1:
-                    printSymbol(symbols, length[0] + "r")
+                    str += printSymbol(symbols, length[0] + "r")
                 elif length.split()[0] == "dotted":
-                    printSymbol(symbols, length.split()[1][0] + "r")
-                    printSymbol(symbols, "dot")
+                    str += printSymbol(symbols, length.split()[1][0] + "r")
+                    str += printSymbol(symbols, "dot")
             if (d["type"] == "note"):
                 note = d["note"]
                 if lastNote < 0 or abs(note - lastNote) > 8:
-                    printSymbol(octaves, (note + 8) // 12)
+                    str += printSymbol(octaves, (note + 8) // 12)
                 elif abs(note - lastNote) > 4:
                     if not (note + 8) // 12 == (lastNote + 8) // 12:
-                        printSymbol(octaves, (note + 8) // 12)
+                        str += printSymbol(octaves, (note + 8) // 12)
 
                 if not d["sign"] == "none":
                     if d["sign"] == "natural":
                         key = [k for k in key if k.get("note") != d["note"]]
-                        printSymbol(symbols, d["sign"])
+                        str += printSymbol(symbols, d["sign"])
                     else:
                         key.append(
                             {"type": d["sign"], "note": (d["note"] + 8) % 12})
-                        printSymbol(symbols, d["sign"])
+                        str += printSymbol(symbols, d["sign"])
 
                 if len(length.split()) == 1:
-                    printNote(note, length, key)
+                    str += printNote(note, length, key)
                 elif length.split()[0] == "dotted":
-                    printNote(note, length.split()[1], key)
-                    printSymbol(symbols, "dot")
+                    str += printNote(note, length.split()[1], key)
+                    str += printSymbol(symbols, "dot")
 
                 lastNote = note
-        return lastNote
+        return [lastNote, str]
 
 
-m1 = Measure("1", [{"type": "rest", "length": "half"}, {
-             "type": "note", "length": "quarter", "note": 30, "sign": "none"}])
-m2 = Measure("2", [{"type": "note", "length": "half", "note": 38, "sign": "none"}, {
-    "type": "note", "length": "quarter", "note": 35, "sign": "none"}])
-m3 = Measure("3", [{"type": "note", "length": "dotted quarter", "note": 35, "sign": "none"}, {
-    "type": "note", "length": "eighth", "note": 34, "sign": "sharp"}, {
-    "type": "note", "length": "quarter", "note": 35, "sign": "none"},])
-m4 = Measure("4", [{"type": "note", "length": "half", "note": 37, "sign": "none"}, {
-    "type": "note", "length": "quarter", "note": 34, "sign": "sharp"}])
-m5 = Measure("5", [{"type": "note", "length": "half", "note": 30, "sign": "none"}, {
-    "type": "rest", "length": "quarter"}])
+# m1 = Measure("1", [{"type": "rest", "length": "half"}, {
+#              "type": "note", "length": "quarter", "note": 30, "sign": "none"}])
+# m2 = Measure("2", [{"type": "note", "length": "half", "note": 38, "sign": "none"}, {
+#     "type": "note", "length": "quarter", "note": 35, "sign": "none"}])
+# m3 = Measure("3", [{"type": "note", "length": "dotted quarter", "note": 35, "sign": "none"}, {
+#     "type": "note", "length": "eighth", "note": 34, "sign": "sharp"}, {
+#     "type": "note", "length": "quarter", "note": 35, "sign": "none"},])
+# m4 = Measure("4", [{"type": "note", "length": "half", "note": 37, "sign": "none"}, {
+#     "type": "note", "length": "quarter", "note": 34, "sign": "sharp"}])
+# m5 = Measure("5", [{"type": "note", "length": "half", "note": 30, "sign": "none"}, {
+#     "type": "rest", "length": "quarter"}])
 
-song = Song([{"type": "flat", "note": 10}, {
-            "type": "flat", "note": 3}], [3, 4], [m1, m2, m3, m4, m5])
-song.print()
+# song = Song([{"type": "flat", "note": 10}, {
+#             "type": "flat", "note": 3}], [3, 4], [m1, m2, m3, m4, m5])
+# song.print()
 
 
 # m21 = Measure("1", [
@@ -452,7 +397,7 @@ song.print()
 # song2.print()
 
 
-tree = ET.parse('test2.musicxml')
+tree = ET.parse('Example_score.musicxml')
 root = tree.getroot()
 
 firstMeasure = root.findall("./part/measure/attributes")[0]
@@ -495,4 +440,6 @@ for child in root.findall("./part/measure"):
             m.addNote(note)
     song.addMeasure(m)
 
-song.print()
+# song.print()
+
+# >allegretto,
