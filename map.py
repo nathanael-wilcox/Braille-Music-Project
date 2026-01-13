@@ -20,18 +20,21 @@ flatKeys = [{"type": "flat", "note": 10}, {"type": "flat", "note": 3}, {"type": 
     "type": "flat", "note": 1}, {"type": "flat", "note": 6}, {"type": "flat", "note": 11}, {"type": "flat", "note": 4}]
 sharpKeys = [{"type": "sharp", "note": 6}, {"type": "sharp", "note": 1}, {"type": "sharp", "note": 8}, {
     "type": "sharp", "note": 3}, {"type": "sharp", "note": 10}, {"type": "sharp", "note": 5}, {"type": "sharp", "note": 0}]
-
+abbreviations = {"rit.": "rit'"}
 
 class Key:
     def __init__(self, type: str, note: int):
         self.type = type
         self.note = note
 
+class Text:
+    def __init__(self, text: str):
+        self.text = text
+
 
 # Example data - {"length": "half"}
 class Rest:
     def __init__(self, length: str):
-        self.type = "rest"
         self.length = length
 
 
@@ -39,35 +42,41 @@ class Rest:
 #                {"length": "eighth", "note": 41, "sign": "flat"}
 class Note:
     def __init__(self, length: str, note: int, sign: str):
-        self.type = "note"
         self.length = length
         self.note = note
         self.sign = sign
 
 
 class Measure:
-    def __init__(self, number: int, data: list[Rest | Note]):
+    def __init__(self, number: int, data: list[Rest | Note | Text]):
         self.number = number
         self.data = data
+        self.length = 0
 
-    def addNote(self, note: Rest | Note):
+    def addText(self, text: Text):
+        self.data.append(text)
+
+    def addNote(self, note: Rest | Note | Text):
         self.data.append(note)
 
     def print(self, printNumber: bool, lastNote: int, key: list[Key]):
         str = ""
         if printNumber:  # Prints the measure number if needed
             str += getChar(symbols["number"]) + \
-                getChar(numbers[self.number]) + "  "
+                getChar(numbers[self.number]) + " "
         for d in self.data:  # For each item in the measure
-            length = d.length
-            type = d.type
             if isinstance(d, Rest):
+                length = d.length
                 if len(length.split()) == 1:  # If length is just one word
                     str += getChar(symbols[length[0] + "r"])
                 elif length.split()[0] == "dotted":  # If length has dotted in front
                     str += getChar(symbols[length.split()[1][0] + "r"])
                     str += getChar(symbols["dot"])
-            if isinstance(d, Note):
+            elif isinstance(d, Text):
+                str += ">" + d.text
+                lastNote = -1
+            elif isinstance(d, Note):
+                length = d.length
                 note = d.note
                 sign = d.sign
                 # If there is no last note or the last note was more than
@@ -98,6 +107,7 @@ class Measure:
                     str += getChar(symbols["dot"])
 
                 lastNote = note
+        self.length = len(str)
         return [lastNote, str]
 
 
@@ -108,6 +118,7 @@ class Song:
         self.time = time
         self.text = text
         self.measures = measures
+        self.lineWidth = 38
         self.measureSize = 8  # Determines how many measures are on a line
 
     def addMeasure(self, measure: Measure):
@@ -115,6 +126,8 @@ class Song:
 
     def write(self, file: str):
         res = ""
+        if self.text:
+            res += self.text + " "
         for k in self.key:  # Print every flat or sharp in the key signature
             res += getChar(symbols[k.type])
         # Print number sign and time signature
@@ -125,12 +138,19 @@ class Song:
 
         i = 0
         lastNote = -1
+        runningLength = 0
         for m in self.measures:  # For each measure, print and check for new line
             mData = m.print(i % self.measureSize == 0, lastNote, self.key)
+            runningLength += m.length
+            if runningLength > self.lineWidth:
+                mData = m.print(i % self.measureSize == 0, -1, self.key)
+                res += "\n  "
+                runningLength = m.length
+
             lastNote = mData[0]
             res += mData[1]
             if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                res += "  "
+                res += " "
             elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
                 res += "\n"
                 lastNote = -1
@@ -190,7 +210,10 @@ def parseFile(file: str):
     tree = ET.parse(file)
     root = tree.getroot()
 
-    firstMeasure = root.findall("./part/measure")[0]
+    firstMeasure = root.find("./part/measure")
+
+    if firstMeasure is None:
+        raise Exception("Provided file has no measures")
 
     beat = int(handleXML(firstMeasure.findall(
         "./attributes/time/beats")[0].text))
@@ -199,15 +222,12 @@ def parseFile(file: str):
     accidentals = int(handleXML(firstMeasure.findall(
         "./attributes/key/fifths")[0].text))
     text = ""
-    print(beat, beatType, accidentals)
     if firstMeasure.findall("./direction"):
         text = "," + handleXML(firstMeasure.findall("./direction")
                                [0].findall("./direction-type/words")[0].text).lower() + "4"
         el = root.find("./part/measure/direction")
         if el is not None:
-            print(el, type(el))
-            root.remove(el)  # type: ignore
-    print(text)
+            firstMeasure.remove(el)
 
     # Add accidentals to key signature
     key = []
@@ -222,39 +242,46 @@ def parseFile(file: str):
             key.append(Key(flatKeys[i]["type"], flatKeys[i]["note"]))
             i += 1
 
-    song = Song(key, [beat, beatType], "", [])
+    song = Song(key, [beat, beatType], text, [])
 
     for child in root.findall("./part/measure"):  # For each measure in XML
-        for c in child:
-            print(c.tag, c.attrib)
         m = Measure(int(child.attrib["number"]), [])
-        # for c in child.findall("./note"):  # For each note
-        #     if c.findall("./pitch"):  # If note is a note
-        #         # Find absolute pitch value from octave and note name
-        #         pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
-        #             + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
-        #         sign: str = "none"
-        #         if c.findall("./accidental"):  # Check for accidental
-        #             sign = handleXML(c.findall("./accidental")[0].text)
-        #         if c.findall("./pitch/alter"):  # Check for pitch shift
-        #             pitch += int(handleXML(c.findall("./pitch/alter")[0].text))
-        #         length: str = handleXML(c.findall("./type")[0].text)
-        #         if c.findall("./dot"):  # Check for dotted note
-        #             length = "dotted " + length
-        #         note = Note(length, pitch, sign)
-        #         m.addNote(note)
-        #     elif c.findall("./rest"):  # If note is a rest
-        #         note = Rest(handleXML(c.findall("./type")[0].text))
-        #         m.addNote(note)
+        for c in child:
+            if c.tag == "direction":
+                tag = c.find("./direction-type/words")
+                if tag is not None and tag.text:
+                    if tag.text.lower() in abbreviations:
+                        m.addText(Text(abbreviations[tag.text.lower()]))
+                    else:
+                        m.addText(Text(tag.text.lower()))
+                tag = c.find("./direction-type/dynamics")
+                if tag is not None and tag[0] is not None:
+                    m.addText(Text(tag[0].tag))
+            elif c.tag == "note":
+                if c.findall("./pitch"):  # If note is a note
+                    # Find absolute pitch value from octave and note name
+                    pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
+                        + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
+                    sign: str = "none"
+                    if c.findall("./accidental"):  # Check for accidental
+                        sign = handleXML(c.findall("./accidental")[0].text)
+                    if c.findall("./pitch/alter"):  # Check for pitch shift
+                        pitch += int(handleXML(c.findall("./pitch/alter")[0].text))
+                    length: str = handleXML(c.findall("./type")[0].text)
+                    if c.findall("./dot"):  # Check for dotted note
+                        length = "dotted " + length
+                    note = Note(length, pitch, sign)
+                    m.addNote(note)
+                elif c.findall("./rest"):  # If note is a rest
+                    note = Rest(handleXML(c.findall("./type")[0].text))
+                    m.addNote(note)
         song.addMeasure(m)
 
     return song
 
 
-# for c in ",allegretto4":
+# for c in ">dolce":
 #     print(getAscii(dots[chars.index(c)]), end="")
 
 song = parseFile("dynamics1.musicxml")
-# song.write("song.brf")
-
-# >allegretto,
+song.write("song.brf")

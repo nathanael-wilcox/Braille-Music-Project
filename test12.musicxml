@@ -107,29 +107,37 @@
             <left-margin>50</left-margin>
             <right-margin>0</right-margin>
             </system-margins>
-          <top-system-distance>167.17</top-system-distance>
+          <top-system-distance>168.31</top-system-distance>
           </system-layout>
         </print>
       <attributes>
         <divisions>2</divisions>
         <key>
           <fifths>-1</fifths>
-        </key>
+          </key>
         <time>
           <beats>2</beats>
           <beat-type>4</beat-type>
-        </time>
+          </time>
         <clef>
           <sign>G</sign>
           <line>2</line>
-        </clef>
-      </attributes>
+          </clef>
+        </attributes>
       <direction placement="above" system="only-top">
         <direction-type>
-          <words default-x="-37.68" relative-y="20" font-weight="bold" font-size="12">Allegretto</words>
+          <words default-x="-37.68" default-y="12.99" relative-y="20" font-weight="bold" font-size="12">Allegretto</words>
           </direction-type>
         <sound tempo="116"/>
-      </direction>
+        </direction>
+      <direction placement="above">
+        <direction-type>
+          <dynamics default-x="3.09" default-y="2.15" relative-y="10">
+            <p/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="54.44"/>
+        </direction>
       <note default-x="95.83" default-y="-15">
         <pitch>
           <step>C</step>
@@ -153,6 +161,14 @@
         <accidental>natural</accidental>
         <stem>down</stem>
         </note>
+      <direction placement="above">
+        <direction-type>
+          <dynamics default-x="5.32" default-y="3.35" relative-y="10">
+            <mf/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="88.89"/>
+        </direction>
       <note default-x="73.08" default-y="-20">
         <pitch>
           <step>B</step>
@@ -167,6 +183,14 @@
         </note>
       </measure>
     <measure number="3" width="98.67">
+      <direction placement="above">
+        <direction-type>
+          <dynamics default-x="2.31" default-y="3.35" relative-y="10">
+            <f/>
+            </dynamics>
+          </direction-type>
+        <sound dynamics="106.67"/>
+        </direction>
       <note default-x="12.5" default-y="-25">
         <pitch>
           <step>A</step>

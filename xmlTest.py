@@ -13,8 +13,10 @@ def parseFile(file: str):
     root = tree.getroot()
 
     for child in root.findall("./part/measure"):  # For each measure in XML
-        for c in child:
-            print(c.tag, c.attrib)
+        print(type(child))
+        print(child.tag)
+        # for c in child:
+        #     print(c.tag, c.attrib)
         # for c in child.findall("./note"):  # For each note
         #     if c.findall("./pitch"):  # If note is a note
         #         # Find absolute pitch value from octave and note name
@@ -31,5 +33,6 @@ def parseFile(file: str):
         #     elif c.findall("./rest"):  # If note is a rest
         #         print(handleXML(c.findall("./type")[0].text))
 
+    print(root.find("./part/measure"))
 
 parseFile("test12.musicxml")
