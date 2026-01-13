@@ -103,9 +103,10 @@ class Measure:
 
 # Example time - [3, 4]
 class Song:
-    def __init__(self, key: list[Key], time: list[int], measures: list[Measure]):
+    def __init__(self, key: list[Key], time: list[int], text: str, measures: list[Measure]):
         self.key = key
         self.time = time
+        self.text = text
         self.measures = measures
         self.measureSize = 8  # Determines how many measures are on a line
 
@@ -189,12 +190,24 @@ def parseFile(file: str):
     tree = ET.parse(file)
     root = tree.getroot()
 
-    firstMeasure = root.findall("./part/measure/attributes")[0]
+    firstMeasure = root.findall("./part/measure")[0]
 
-    beat = int(handleXML(firstMeasure.findall("./time/beats")[0].text))
+    beat = int(handleXML(firstMeasure.findall(
+        "./attributes/time/beats")[0].text))
     beatType = int(handleXML(firstMeasure.findall(
-        "./time/beat-type")[0].text))
-    accidentals = int(handleXML(firstMeasure.findall("./key/fifths")[0].text))
+        "./attributes/time/beat-type")[0].text))
+    accidentals = int(handleXML(firstMeasure.findall(
+        "./attributes/key/fifths")[0].text))
+    text = ""
+    print(beat, beatType, accidentals)
+    if firstMeasure.findall("./direction"):
+        text = "," + handleXML(firstMeasure.findall("./direction")
+                               [0].findall("./direction-type/words")[0].text).lower() + "4"
+        el = root.find("./part/measure/direction")
+        if el is not None:
+            print(el, type(el))
+            root.remove(el)  # type: ignore
+    print(text)
 
     # Add accidentals to key signature
     key = []
@@ -209,34 +222,39 @@ def parseFile(file: str):
             key.append(Key(flatKeys[i]["type"], flatKeys[i]["note"]))
             i += 1
 
-    song = Song(key, [beat, beatType], [])
+    song = Song(key, [beat, beatType], "", [])
 
     for child in root.findall("./part/measure"):  # For each measure in XML
+        for c in child:
+            print(c.tag, c.attrib)
         m = Measure(int(child.attrib["number"]), [])
-        for c in child.findall("./note"):  # For each note
-            if c.findall("./pitch"):  # If note is a note
-                # Find absolute pitch value from octave and note name
-                pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
-                    + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
-                sign: str = "none"
-                if c.findall("./accidental"):  # Check for accidental
-                    sign = handleXML(c.findall("./accidental")[0].text)
-                if c.findall("./pitch/alter"):  # Check for pitch shift
-                    pitch += int(handleXML(c.findall("./pitch/alter")[0].text))
-                length: str = handleXML(c.findall("./type")[0].text)
-                if c.findall("./dot"):  # Check for dotted note
-                    length = "dotted " + length
-                note = Note(length, pitch, sign)
-                m.addNote(note)
-            elif c.findall("./rest"):  # If note is a rest
-                note = Rest(handleXML(c.findall("./type")[0].text))
-                m.addNote(note)
+        # for c in child.findall("./note"):  # For each note
+        #     if c.findall("./pitch"):  # If note is a note
+        #         # Find absolute pitch value from octave and note name
+        #         pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
+        #             + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
+        #         sign: str = "none"
+        #         if c.findall("./accidental"):  # Check for accidental
+        #             sign = handleXML(c.findall("./accidental")[0].text)
+        #         if c.findall("./pitch/alter"):  # Check for pitch shift
+        #             pitch += int(handleXML(c.findall("./pitch/alter")[0].text))
+        #         length: str = handleXML(c.findall("./type")[0].text)
+        #         if c.findall("./dot"):  # Check for dotted note
+        #             length = "dotted " + length
+        #         note = Note(length, pitch, sign)
+        #         m.addNote(note)
+        #     elif c.findall("./rest"):  # If note is a rest
+        #         note = Rest(handleXML(c.findall("./type")[0].text))
+        #         m.addNote(note)
         song.addMeasure(m)
 
     return song
 
 
-song = parseFile('test1.musicxml')
-song.write("song.brf")
+# for c in ",allegretto4":
+#     print(getAscii(dots[chars.index(c)]), end="")
+
+song = parseFile("dynamics1.musicxml")
+# song.write("song.brf")
 
 # >allegretto,
