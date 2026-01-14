@@ -8,8 +8,8 @@ chars = [" ", "a", "1", "b", "'", "k", "2", "l", "@", "c", "i", "f", "/", "m", "
          ",", "*", "5", "<", "-", "u", "8", "v", ".", "%", "[", "$", "+", "x", "!", "&", ";", ":", "4", "\\", "0", "z", "7", "(", "_", "?", "w", "]", "#", "y", ")", "="]
 numbers = {0: "245", 1: "1", 2: "12", 3: "14", 4: "145",
            5: "15", 6: "124", 7: "1245", 8: "125", 9: "24"}
-symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14",
-           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14"}
+symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14", "slur": "14",
+           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14", "mr": "134"}
 notes = {0: "145", 2: "15", 4: "124",
          5: "1245", 7: "125", 9: "24", 11: "245", }
 lengths = {"128th": "", "64th": "6", "32nd": "3", "16th": "36",
@@ -45,11 +45,12 @@ class Rest:
 # Example data - {"length": "dotted quarter", "note": 35, "sign": "none"},
 #                {"length": "eighth", "note": 41, "sign": "flat"}
 class Note:
-    def __init__(self, length: str, note: int, sign: str, tie: bool):
+    def __init__(self, length: str, note: int, sign: str, tie: bool, slur: str):
         self.length = length
         self.note = note
         self.sign = sign
         self.tie = tie
+        self.slur = slur
 
 
 class Measure:
@@ -91,6 +92,11 @@ class Measure:
                 note = d.note
                 sign = d.sign
                 tie = d.tie
+                slur = d.slur
+
+                # Print end of slur character
+                if slur == "end":
+                    str += getChar(symbols["slur"])
                 # If there is no last note or the last note was more than
                 # 8 half-steps away, print an octave marker
                 if lastNote < 0 or abs(note - lastNote) > 8:
@@ -118,6 +124,11 @@ class Measure:
                     str += makeNote(note, length.split()[1], key)
                     str += getChar(symbols["dot"])
 
+                # Print start of slur character
+                if slur == "start":
+                    str += getChar(symbols["slur"]) + getChar(symbols["slur"])
+
+                # Print tie character
                 if tie:
                     str += getChar(symbols["tie"])
 
@@ -255,7 +266,8 @@ def parseFile(file: str):
         "./attributes/key/fifths")[0].text))
     text = ""
     direction = firstMeasure.find("./direction")
-    if direction is not None and direction.find("./direction-type/words") is not None:
+    if direction is not None and direction.find("./direction-type/words") is not None and \
+            direction.find("./direction-type/words").text.replace(".", "'") not in abbreviations:  # type:ignore
         text = "," + \
             handleXML(firstMeasure.findall(
                 "./direction/direction-type/words")[0].text).lower() + "4"
@@ -278,6 +290,10 @@ def parseFile(file: str):
 
     song = Song(key, beatName, [beat, beatType], text, [])
     lastCresc = ""
+
+    notes = list(root.findall("./part/measure/note"))
+    slur = 0
+    longSlur = False
 
     for child in root.findall("./part/measure"):  # For each measure in XML
         m = Measure(int(child.attrib["number"]), [])
@@ -312,15 +328,35 @@ def parseFile(file: str):
                                 Text(getChar(shiftDown(lastCresc)) + "'"))
                         lastCresc = ""
             elif c.tag == "note":
+                if slur > 0:
+                    slur -= 1
                 if c.findall("./pitch"):  # If note is a note
                     # Find absolute pitch value from octave and note name
                     pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
                         + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
                     sign: str = "none"
                     tie = False
+                    slurValue = ""
+                    if not longSlur and slur > 1:
+                        slurValue = "end"
                     if c.find("./notations/tied") is not None and \
                             handleXML(c.findall("./notations/tied")[0].attrib["type"]) == "start":  # Check for tie
                         tie = True
+                    if c.find("./notations/slur") is not None and \
+                            handleXML(c.findall("./notations/slur")[0].attrib["type"]) == "start":  # Check for slur start
+                        currentNote = notes.index(c)
+                        slurValue = "start"
+                        for i in range(len(notes) - currentNote - 1):
+                            if notes[i + currentNote + 1].find("./notations/slur") is not None:
+                                longSlur = True
+                                if i <= 2:
+                                    longSlur = False
+                                    slurValue = ""
+                                slur = i + 2
+                                break
+                    if slur == 1:
+                        slurValue = "end"
+                        longSlur = False
                     if c.find("./accidental") is not None:  # Check for accidental
                         sign = handleXML(c.findall("./accidental")[0].text)
                     if c.find("./pitch/alter") is not None:  # Check for pitch shift
@@ -329,10 +365,13 @@ def parseFile(file: str):
                     length: str = handleXML(c.findall("./type")[0].text)
                     if c.findall("./dot"):  # Check for dotted note
                         length = "dotted " + length
-                    note = Note(length, pitch, sign, tie)
+                    note = Note(length, pitch, sign, tie, slurValue)
                     m.addNote(note)
                 elif c.findall("./rest"):  # If note is a rest
-                    note = Rest(handleXML(c.findall("./type")[0].text))
+                    if len(c.findall("./type")) > 0:
+                        note = Rest(handleXML(c.findall("./type")[0].text))
+                    else:
+                        note = Rest("measure")
                     m.addNote(note)
         song.addMeasure(m)
 
