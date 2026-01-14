@@ -8,11 +8,12 @@ chars = [" ", "a", "1", "b", "'", "k", "2", "l", "@", "c", "i", "f", "/", "m", "
          ",", "*", "5", "<", "-", "u", "8", "v", ".", "%", "[", "$", "+", "x", "!", "&", ";", ":", "4", "\\", "0", "z", "7", "(", "_", "?", "w", "]", "#", "y", ")", "="]
 numbers = {0: "245", 1: "1", 2: "12", 3: "14", 4: "145",
            5: "15", 6: "124", 7: "1245", 8: "125", 9: "24"}
-symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256",
-           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25"}
+symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14",
+           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14"}
 notes = {0: "145", 2: "15", 4: "124",
          5: "1245", 7: "125", 9: "24", 11: "245", }
-lengths = {"eighth": "", "quarter": "6", "half": "3", "whole": "36"}
+lengths = {"128th": "", "64th": "6", "32nd": "3", "16th": "36",
+           "eighth": "", "quarter": "6", "half": "3", "whole": "36"}
 octaves = {0: "4 4", 1: "4", 2: "45", 3: "456",
            4: "5", 5: "46", 6: "56", 7: "6", 8: "6 6"}
 noteShift = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
@@ -44,10 +45,11 @@ class Rest:
 # Example data - {"length": "dotted quarter", "note": 35, "sign": "none"},
 #                {"length": "eighth", "note": 41, "sign": "flat"}
 class Note:
-    def __init__(self, length: str, note: int, sign: str):
+    def __init__(self, length: str, note: int, sign: str, tie: bool):
         self.length = length
         self.note = note
         self.sign = sign
+        self.tie = tie
 
 
 class Measure:
@@ -88,6 +90,7 @@ class Measure:
                 length = d.length
                 note = d.note
                 sign = d.sign
+                tie = d.tie
                 # If there is no last note or the last note was more than
                 # 8 half-steps away, print an octave marker
                 if lastNote < 0 or abs(note - lastNote) > 8:
@@ -115,6 +118,9 @@ class Measure:
                     str += makeNote(note, length.split()[1], key)
                     str += getChar(symbols["dot"])
 
+                if tie:
+                    str += getChar(symbols["tie"])
+
                 lastNote = note
         self.length = len(str)
         return [lastNote, str]
@@ -122,8 +128,9 @@ class Measure:
 
 # Example time - [3, 4]
 class Song:
-    def __init__(self, key: list[Key], time: list[int], text: str, measures: list[Measure]):
+    def __init__(self, key: list[Key], beatName: str, time: list[int], text: str, measures: list[Measure]):
         self.key = key
+        self.beatName = beatName
         self.time = time
         self.text = text
         self.measures = measures
@@ -140,13 +147,20 @@ class Song:
         for k in self.key:  # Print every flat or sharp in the key signature
             res += getChar(symbols[k.type])
         # Print number sign and time signature
-        res += getChar(symbols["number"])
-        res += getChar(numbers[self.time[0]])
-        res += getChar(shiftDown(numbers[self.time[1]]))
-        i = round((self.lineWidth - len(res)) / 2) + 2
-        while i > 0:
-            res = " " + res
-            i -= 1
+        if len(self.beatName):
+            res += getChar(symbols[self.beatName])
+        else:
+            res += getChar(symbols["number"])
+            res += getChar(numbers[self.time[0]])
+            res += getChar(shiftDown(numbers[self.time[1]]))
+
+        i = ((self.lineWidth - len(res)) // 2) + 3
+        if self.text:
+            while i > 0:
+                res = " " + res
+                i -= 1
+        else:
+            res = "  " + res
         res += "\n"
 
         i = 0
@@ -233,6 +247,10 @@ def parseFile(file: str):
         "./attributes/time/beats")[0].text))
     beatType = int(handleXML(firstMeasure.findall(
         "./attributes/time/beat-type")[0].text))
+    beatName = ""
+    time = firstMeasure.find("./attributes/time")
+    if time is not None and len(time.attrib) > 0 and time.attrib["symbol"] is not None:
+        beatName = time.attrib["symbol"]
     accidentals = int(handleXML(firstMeasure.findall(
         "./attributes/key/fifths")[0].text))
     text = ""
@@ -258,11 +276,15 @@ def parseFile(file: str):
             key.append(Key(flatKeys[i]["type"], flatKeys[i]["note"]))
             i += 1
 
-    song = Song(key, [beat, beatType], text, [])
+    song = Song(key, beatName, [beat, beatType], text, [])
+    lastCresc = ""
 
     for child in root.findall("./part/measure"):  # For each measure in XML
         m = Measure(int(child.attrib["number"]), [])
+        childList = list(child)
         for c in child:
+            lastChild = True if childList.index(
+                c) == len(childList) - 1 else False
             if c.tag == "direction":
                 tag = c.find("./direction-type/words")
                 if tag is not None and tag.text:
@@ -274,21 +296,40 @@ def parseFile(file: str):
                 tag = c.find("./direction-type/dynamics")
                 if tag is not None and tag[0] is not None:
                     m.addText(Text(tag[0].tag))
+                tag = c.find("./direction-type/wedge")
+                if tag is not None and tag.attrib["type"] is not None:
+                    if tag.attrib["type"] == "crescendo":
+                        lastCresc = "14"
+                        m.addText(Text(getChar(lastCresc)))
+                    elif tag.attrib["type"] == "diminuendo":
+                        lastCresc = "145"
+                        m.addText(Text(getChar(lastCresc)))
+                    elif tag.attrib["type"] == "stop":
+                        if lastChild or childList[childList.index(c) + 1].tag == "barline":
+                            m.addText(Text(getChar(shiftDown(lastCresc))))
+                        else:
+                            m.addText(
+                                Text(getChar(shiftDown(lastCresc)) + "'"))
+                        lastCresc = ""
             elif c.tag == "note":
                 if c.findall("./pitch"):  # If note is a note
                     # Find absolute pitch value from octave and note name
                     pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
                         + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
                     sign: str = "none"
-                    if c.findall("./accidental"):  # Check for accidental
+                    tie = False
+                    if c.find("./notations/tied") is not None and \
+                            handleXML(c.findall("./notations/tied")[0].attrib["type"]) == "start":  # Check for tie
+                        tie = True
+                    if c.find("./accidental") is not None:  # Check for accidental
                         sign = handleXML(c.findall("./accidental")[0].text)
-                    if c.findall("./pitch/alter"):  # Check for pitch shift
+                    if c.find("./pitch/alter") is not None:  # Check for pitch shift
                         pitch += int(handleXML(c.findall("./pitch/alter")
                                      [0].text))
                     length: str = handleXML(c.findall("./type")[0].text)
                     if c.findall("./dot"):  # Check for dotted note
                         length = "dotted " + length
-                    note = Note(length, pitch, sign)
+                    note = Note(length, pitch, sign, tie)
                     m.addNote(note)
                 elif c.findall("./rest"):  # If note is a rest
                     note = Rest(handleXML(c.findall("./type")[0].text))
@@ -298,8 +339,5 @@ def parseFile(file: str):
     return song
 
 
-# for c in ">dolce":
-#     print(getAscii(dots[chars.index(c)]), end="")
-
-song = parseFile("dynamics2.musicxml")
+song = parseFile("dynamics.musicxml")
 song.write("song.brf")
