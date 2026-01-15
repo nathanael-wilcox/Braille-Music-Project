@@ -86,7 +86,6 @@ class Measure:
                     trimmedStr += getChar(symbols[length.split()
                                           [1][0] + "r"]) + getChar(symbols["dot"])
             elif isinstance(d, Text):
-                print(d.text)
                 if len(d.text.split()) == 1:
                     str += ">" + d.text
                     if d.text in dynamics:
@@ -211,7 +210,6 @@ class Song:
 
             lastNote = mData[0]
             thisMeasure = mData[2]
-            print(thisMeasure, lastMeasure[2:])
             if thisMeasure == lastMeasure or (len(lastMeasure) > 0 and lastMeasure[0] == ">" and thisMeasure == lastMeasure[2:]):
                 runningLength += 1
                 if runningLength > self.lineWidth:
