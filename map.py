@@ -8,8 +8,8 @@ chars = [" ", "a", "1", "b", "'", "k", "2", "l", "@", "c", "i", "f", "/", "m", "
          ",", "*", "5", "<", "-", "u", "8", "v", ".", "%", "[", "$", "+", "x", "!", "&", ";", ":", "4", "\\", "0", "z", "7", "(", "_", "?", "w", "]", "#", "y", ")", "="]
 numbers = {0: "245", 1: "1", 2: "12", 3: "14", 4: "145",
            5: "15", 6: "124", 7: "1245", 8: "125", 9: "24"}
-symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14", "slur": "14",
-           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14", "mr": "134"}
+symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14", "slur": "14", "repeat": "2356", "startSlur": "56 12",
+           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14", "mr": "134", "endSlur": "45 23"}
 notes = {0: "145", 2: "15", 4: "124",
          5: "1245", 7: "125", 9: "24", 11: "245", }
 lengths = {"128th": "", "64th": "6", "32nd": "3", "16th": "36",
@@ -23,6 +23,8 @@ sharpKeys = [{"type": "sharp", "note": 6}, {"type": "sharp", "note": 1}, {"type"
     "type": "sharp", "note": 3}, {"type": "sharp", "note": 10}, {"type": "sharp", "note": 5}, {"type": "sharp", "note": 0}]
 abbreviations = {"ritardando": "rit'", "crescendo": "cr'",
                  "cresc'": "cr'", "decrescendo": "decr'", "decresc'": "decr'"}
+dynamics = ["pppppp", "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "ffff", "fffff", "ffffff",
+            "fp", "pf", "sf", "sfz", "sff", "sffz", "sfff", "sfffz", "sfp", "sfpp", "rfz", "rf", "fz", "m", "r", "z", "s", "n"]
 
 
 class Key:
@@ -67,6 +69,8 @@ class Measure:
 
     def print(self, printNumber: bool, lastNote: int, key: list[Key]):
         str = ""
+        firstNote = True
+        trimmedStr = ""
         if printNumber:  # Prints the measure number if needed
             str += getChar(symbols["number"]) + \
                 getChar(numbers[self.number]) + " "
@@ -75,12 +79,18 @@ class Measure:
                 length = d.length
                 if len(length.split()) == 1:  # If length is just one word
                     str += getChar(symbols[length[0] + "r"])
+                    trimmedStr += getChar(symbols[length[0] + "r"])
                 elif length.split()[0] == "dotted":  # If length has dotted in front
-                    str += getChar(symbols[length.split()[1][0] + "r"])
-                    str += getChar(symbols["dot"])
+                    str += getChar(symbols[length.split()[1]
+                                   [0] + "r"]) + getChar(symbols["dot"])
+                    trimmedStr += getChar(symbols[length.split()
+                                          [1][0] + "r"]) + getChar(symbols["dot"])
             elif isinstance(d, Text):
+                print(d.text)
                 if len(d.text.split()) == 1:
                     str += ">" + d.text
+                    if d.text in dynamics:
+                        trimmedStr += ">" + d.text
                 else:
                     if lastNote > 0:
                         str += " >" + d.text + "> "
@@ -94,17 +104,27 @@ class Measure:
                 tie = d.tie
                 slur = d.slur
 
-                # Print end of slur character
-                if slur == "end":
+                # Print start of slur character
+                if slur == "start":
+                    str += getChar(symbols["startSlur"])
+                    trimmedStr += getChar(symbols["startSlur"])
+                # Print slur character
+                elif slur == "slur":
                     str += getChar(symbols["slur"])
+                    trimmedStr += getChar(symbols["slur"])
+
                 # If there is no last note or the last note was more than
                 # 8 half-steps away, print an octave marker
                 if lastNote < 0 or abs(note - lastNote) > 8:
+                    if not firstNote:
+                        trimmedStr += getChar(octaves[(note + 8) // 12])
                     str += getChar(octaves[(note + 8) // 12])
                 # Else if the note is within 4 half-steps of the last note
                 # and is on a new octave print octave marker
                 elif abs(note - lastNote) > 4:
                     if not (note + 8) // 12 == (lastNote + 8) // 12:
+                        if not firstNote:
+                            trimmedStr += getChar(octaves[(note + 8) // 12])
                         str += getChar(octaves[(note + 8) // 12])
 
                 # Check for accidentals
@@ -113,28 +133,36 @@ class Measure:
                         # If note is natural, check for that note in the key signature and remove it
                         key = [k for k in key if k.note != note]
                         str += getChar(symbols[sign])
+                        trimmedStr += getChar(symbols[sign])
                     else:
                         # Append the new accidental to the key signature
                         key.append(Key(sign, (note + 8) % 12))
                         str += getChar(symbols[sign])
+                        trimmedStr += getChar(symbols[sign])
 
                 if len(length.split()) == 1:
                     str += makeNote(note, length, key)
+                    trimmedStr += makeNote(note, length, key)
                 elif length.split()[0] == "dotted":
-                    str += makeNote(note, length.split()[1], key)
-                    str += getChar(symbols["dot"])
+                    str += makeNote(note, length.split()
+                                    [1], key) + getChar(symbols["dot"])
+                    trimmedStr += makeNote(note, length.split()
+                                           [1], key) + getChar(symbols["dot"])
 
-                # Print start of slur character
-                if slur == "start":
-                    str += getChar(symbols["slur"]) + getChar(symbols["slur"])
+                # Print end of slur character
+                if slur == "end":
+                    str += getChar(symbols["endSlur"])
+                    trimmedStr += getChar(symbols["endSlur"])
 
                 # Print tie character
                 if tie:
                     str += getChar(symbols["tie"])
+                    trimmedStr += getChar(symbols["tie"])
 
                 lastNote = note
+                firstNote = False
         self.length = len(str)
-        return [lastNote, str]
+        return [lastNote, str, trimmedStr]
 
 
 # Example time - [3, 4]
@@ -177,17 +205,39 @@ class Song:
         i = 0
         lastNote = -1
         runningLength = 0
+        lastMeasure = ""
         for m in self.measures:  # For each measure, print and check for new line
             mData = m.print(i % self.measureSize == 0, lastNote, self.key)
-            runningLength += m.length
-            if runningLength > self.lineWidth:
-                mData = m.print(i % self.measureSize == 0, -1, self.key)
-                mData[1] = "  " + mData[1]
-                res += "\n"
-                runningLength = m.length
 
             lastNote = mData[0]
-            res += mData[1]
+            thisMeasure = mData[2]
+            print(thisMeasure, lastMeasure[2:])
+            if thisMeasure == lastMeasure or (len(lastMeasure) > 0 and lastMeasure[0] == ">" and thisMeasure == lastMeasure[2:]):
+                runningLength += 1
+                if runningLength > self.lineWidth:
+                    res += "\n  "
+                    runningLength = 1
+                if res.split()[-1][0:2] == getChar(symbols["repeat"]) + getChar(symbols["number"]):
+                    # Get number of repeated measures and add 1
+                    res = res[0:-2] + getChar(numbers[list(numbers.keys())[list(numbers.values()).index(
+                        getDots(res.split(" ")[-2][2:]))] + 1])
+                    lastNote = -1
+                elif res.split()[-2] == getChar(symbols["repeat"]) and res.split()[-1] == getChar(symbols["repeat"]):
+                    res = res[:-4] + getChar(symbols["repeat"]) + getChar(
+                        symbols["number"]) + getChar(numbers[3])
+                    runningLength -= 3
+                    lastNote = -1
+                else:
+                    res += getChar(symbols["repeat"])
+            else:
+                runningLength += m.length
+                if runningLength > self.lineWidth:
+                    mData = m.print(i % self.measureSize == 0, -1, self.key)
+                    mData[1] = "  " + mData[1]
+                    res += "\n"
+                    runningLength = m.length
+                res += mData[1]
+            lastMeasure = mData[2]
             if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
                 res += " "
             elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
@@ -214,6 +264,10 @@ def getChar(code: str):  # Returns the character value of the provided dot code(
     for c in arr:
         str += chars[dots.index(c)]
     return str
+
+
+def getDots(char: str):  # Returns the character value of the provided dot code(s)
+    return dots[chars.index(char)]
 
 
 def getAscii(code: str):  # Returns the braille ascii character for the provided dot code(s)
@@ -337,8 +391,8 @@ def parseFile(file: str):
                     sign: str = "none"
                     tie = False
                     slurValue = ""
-                    if not longSlur and slur > 1:
-                        slurValue = "end"
+                    if not longSlur and slur > 0:
+                        slurValue = "slur"
                     if c.find("./notations/tied") is not None and \
                             handleXML(c.findall("./notations/tied")[0].attrib["type"]) == "start":  # Check for tie
                         tie = True
@@ -354,7 +408,7 @@ def parseFile(file: str):
                                     slurValue = ""
                                 slur = i + 2
                                 break
-                    if slur == 1:
+                    if slur == 1 and longSlur:
                         slurValue = "end"
                         longSlur = False
                     if c.find("./accidental") is not None:  # Check for accidental
