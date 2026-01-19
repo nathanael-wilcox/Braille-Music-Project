@@ -57,7 +57,7 @@ def on_closing():
         window.quit()
         #window.destroy()
 
-class MyFrame(ctk.CTkFrame):
+class MyFrame1(ctk.CTkFrame):
     def __init__(self, master, label="", **kwargs):
         super().__init__(master, **kwargs)
     
@@ -76,6 +76,15 @@ class MyFrame(ctk.CTkFrame):
         # self.photo_image = ImageTk.PhotoImage(self.image)
         # I tried to add an image, but that is put on hold lol
         
+class MyFrame2(ctk.CTkFrame):
+    def __init__(self, master, label="", **kwargs):
+        super().__init__(master, **kwargs)
+    
+        # Widgets added to the frame
+        self.label = ctk.CTkLabel(self)
+        self.label.configure(text=label)
+        self.label.update()
+        self.label.grid(row=0, column=0, padx=20)
 
 class App(ctk.CTk):
     def __init__(self):
@@ -83,11 +92,15 @@ class App(ctk.CTk):
 
         label = "Select a MusicXML file to process."
 
-        self.frame = MyFrame(self, label)
+        self.frame = MyFrame1(self, "Button Frame")
         #self.frame2 = MyFrame(self,"Yet another label")
-        self.frame.pack(pady=20, padx=60, fill="both", expand=True)
+        self.frame.grid(row=0, column=0, pady=20, padx=20)
+        #self.frame.pack(pady=20, padx=60, fill="both", expand=True)
         #self.frame2.pack(pady=20, padx=60, fill="both", expand=True)
-        self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click)
+        self.frame2 = MyFrame2(self, "No Button Frame")
+        self.frame2.grid(row=0, column=1, pady=20, padx=20)
+        #self.frame2.pack(pady=20, padx=60, fill="both", expand=True)
+        #self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click)
 
 window = App()
 window.title("XML File Processor")
