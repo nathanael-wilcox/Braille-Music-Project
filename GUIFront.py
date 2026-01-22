@@ -3,7 +3,7 @@ import tkinter as tk
 import tkinter.filedialog as filedialog
 import xml.etree.ElementTree as ET
 import os
-# from PIL import Image, ImageTk
+from PIL import Image, ImageTk
 
 def on_button_click():
     filename = open_xml_file_dialog()
@@ -74,19 +74,28 @@ class MyFrame1(ctk.CTkFrame):
         #self.label.update()
         #self.label.grid(row=1, column=0, padx=20)
         self.entry = ctk.CTkEntry(self, placeholder_text="CTkEntry", textvariable=tk.StringVar(value="Button Frame"), width=300, state=tk.DISABLED)
-        self.entry.grid(row=0, column=0, pady=10, padx=20)
+        self.entry.pack(side='top',pady=10, padx=20)
         
         # Frame Button
-        self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click)
-        self.button.grid(row=2, column=0, pady=10, padx=20)
+        self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click, width=150, height=50)
+        self.button.pack(side="right", padx=20, pady=10)
         
     
 
+        try:
+            image_path = 'musicfileicon.png' 
+            pil_image = Image.open(image_path)
+            #pil_image = pil_image.resize((128, 128), Image.LANCZOS)
+            tk_image = ctk.CTkImage(pil_image, size=(128, 128))
+        except Exception as e:
+            print(f"Exception {e} found loading image.")
+            tk_image = None
 
-        # image_path = 'musicfileicon.png' 
-        # self.image = Image.open(image_path)
-        # self.image = self.image.resize((64, 64), Image.LANCZOS)
-        # self.photo_image = ImageTk.PhotoImage(self.image)
+        if tk_image:
+            image_label = ctk.CTkLabel(self, image=tk_image, bg_color="transparent", text='')
+            image_label.image = tk_image  # Keep a reference to avoid garbage collection
+            image_label.pack(side="left", padx=20, pady=10)
+
         # I tried to add an image, but that is put on hold lol
         
 class MyFrame2(ctk.CTkFrame):
@@ -98,7 +107,7 @@ class MyFrame2(ctk.CTkFrame):
         # self.label.configure(text=label)
         # self.label.update()
         # self.label.grid(row=1, column=0, padx=20)
-        self.entry = ctk.CTkEntry(self, placeholder_text="CTkEntry", textvariable=tk.StringVar(value="No Button Frame"), width=300, state=tk.DISABLED)
+        self.entry = ctk.CTkEntry(self, placeholder_text="CTkEntry", textvariable=tk.StringVar(value="File Name"), width=300, state=tk.DISABLED)
         self.entry.grid(row=0, column=0, pady=10, padx=20)
 
         # Frame Textbox
@@ -106,6 +115,7 @@ class MyFrame2(ctk.CTkFrame):
         self.textbox.insert("0.0", "No file selected.")
         self.textbox.configure(state=tk.DISABLED)
         self.textbox.grid(row=2, column=0, pady=10, padx=20)
+
 
     # Method to update textbox content with filename label
     def update_textbox(self, text):
@@ -132,7 +142,7 @@ class App(ctk.CTk):
 # Create the main application window
 window = App()
 window.title("XML File Processor")
-window.geometry("380x350")
+window.geometry("400x450")
 
 window.protocol("WM_DELETE_WINDOW", on_closing)
 window.mainloop()
