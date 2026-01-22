@@ -1,498 +1,434 @@
 import xml.etree.ElementTree as ET
 
-asciiTable = {
-    "": "\u2800",
-    "1": "\u2801",
-    "2": "\u2802",
-    "12": "\u2803",
-    "3": "\u2804",
-    "13": "\u2805",
-    "23": "\u2806",
-    "123": "\u2807",
-    "4": "\u2808",
-    "14": "\u2809",
-    "24": "\u280a",
-    "124": "\u280b",
-    "34": "\u280c",
-    "134": "\u280d",
-    "234": "\u280e",
-    "1234": "\u280f",
-    "5": "\u2810",
-    "15": "\u2811",
-    "25": "\u2812",
-    "125": "\u2813",
-    "35": "\u2814",
-    "135": "\u2815",
-    "235": "\u2816",
-    "1235": "\u2817",
-    "45": "\u2818",
-    "145": "\u2819",
-    "245": "\u281a",
-    "1245": "\u281b",
-    "345": "\u281c",
-    "1345": "\u281d",
-    "2345": "\u281e",
-    "12345": "\u281f",
-    "6": "\u2820",
-    "16": "\u2821",
-    "26": "\u2822",
-    "126": "\u2823",
-    "36": "\u2824",
-    "136": "\u2825",
-    "236": "\u2826",
-    "1236": "\u2827",
-    "46": "\u2828",
-    "146": "\u2829",
-    "246": "\u282a",
-    "1246": "\u282b",
-    "346": "\u282c",
-    "1346": "\u282d",
-    "2346": "\u282e",
-    "12346": "\u282f",
-    "56": "\u2830",
-    "156": "\u2831",
-    "256": "\u2832",
-    "1256": "\u2833",
-    "356": "\u2834",
-    "1356": "\u2835",
-    "2356": "\u2836",
-    "12356": "\u2837",
-    "456": "\u2838",
-    "1456": "\u2839",
-    "2456": "\u283a",
-    "12456": "\u283b",
-    "3456": "\u283c",
-    "13456": "\u283d",
-    "23456": "\u283e",
-    "123456": "\u283f",
-}
+ascii = ["\u2800", "\u2801", "\u2802", "\u2803", "\u2804", "\u2805", "\u2806", "\u2807", "\u2808", "\u2809", "\u280a", "\u280b", "\u280c", "\u280d", "\u280e", "\u280f", "\u2810", "\u2811", "\u2812", "\u2813", "\u2814", "\u2815", "\u2816", "\u2817", "\u2818", "\u2819", "\u281a", "\u281b", "\u281c", "\u281d", "\u281e", "\u281f",
+         "\u2820", "\u2821", "\u2822", "\u2823", "\u2824", "\u2825", "\u2826", "\u2827", "\u2828", "\u2829", "\u282a", "\u282b", "\u282c", "\u282d", "\u282e", "\u282f", "\u2830", "\u2831", "\u2832", "\u2833", "\u2834", "\u2835", "\u2836", "\u2837", "\u2838", "\u2839", "\u283a", "\u283b", "\u283c", "\u283d", "\u283e", "\u283f"]
+dots = ["", "1", "2", "12", "3", "13", "23", "123", "4", "14", "24", "124", "34", "134", "234", "1234", "5", "15", "25", "125", "35", "135", "235", "1235", "45", "145", "245", "1245", "345", "1345", "2345", "12345", "6", "16",
+        "26", "126", "36", "136", "236", "1236", "46", "146", "246", "1246", "346", "1346", "2346", "12346", "56", "156", "256", "1256", "356", "1356", "2356", "12356", "456", "1456", "2456", "12456", "3456", "13456", "23456", "123456"]
+chars = [" ", "a", "1", "b", "'", "k", "2", "l", "@", "c", "i", "f", "/", "m", "s", "p", "\"", "e", "3", "h", "9", "o", "6", "r", "^", "d", "j", "g", ">", "n", "t", "q",
+         ",", "*", "5", "<", "-", "u", "8", "v", ".", "%", "[", "$", "+", "x", "!", "&", ";", ":", "4", "\\", "0", "z", "7", "(", "_", "?", "w", "]", "#", "y", ")", "="]
+numbers = {0: "245", 1: "1", 2: "12", 3: "14", 4: "145",
+           5: "15", 6: "124", 7: "1245", 8: "125", 9: "24"}
+symbols = {"number": "3456", "sharp": "146", "flat": "126", "natural": "16", "db": "126 13", "dp": "345 145", "tdp": "345 256", "common": "46 14", "slur": "14", "repeat": "2356", "startSlur": "56 12",
+           "sdb": "126 13 3", "er": "1346", "qr": "1236", "hr": "136", "wr": "134", "dot": "3", "cp": "345 14", "tcp": "345 25", "cut": "456 14", "tie": "4 14", "mr": "134", "endSlur": "45 23"}
+notes = {0: "145", 2: "15", 4: "124",
+         5: "1245", 7: "125", 9: "24", 11: "245", }
+lengths = {"128th": "", "64th": "6", "32nd": "3", "16th": "36",
+           "eighth": "", "quarter": "6", "half": "3", "whole": "36"}
+octaves = {0: "4 4", 1: "4", 2: "45", 3: "456",
+           4: "5", 5: "46", 6: "56", 7: "6", 8: "6 6"}
+noteShift = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+flatKeys = [{"type": "flat", "note": 10}, {"type": "flat", "note": 3}, {"type": "flat", "note": 8}, {
+    "type": "flat", "note": 1}, {"type": "flat", "note": 6}, {"type": "flat", "note": 11}, {"type": "flat", "note": 4}]
+sharpKeys = [{"type": "sharp", "note": 6}, {"type": "sharp", "note": 1}, {"type": "sharp", "note": 8}, {
+    "type": "sharp", "note": 3}, {"type": "sharp", "note": 10}, {"type": "sharp", "note": 5}, {"type": "sharp", "note": 0}]
+abbreviations = {"ritardando": "rit'", "crescendo": "cr'",
+                 "cresc'": "cr'", "decrescendo": "decr'", "decresc'": "decr'"}
+dynamics = ["pppppp", "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "ffff", "fffff", "ffffff",
+            "fp", "pf", "sf", "sfz", "sff", "sffz", "sfff", "sfffz", "sfp", "sfpp", "rfz", "rf", "fz", "m", "r", "z", "s", "n"]
 
-charTable = {
-    "": " ",
-    "1": "a",
-    "2": "1",
-    "12": "b",
-    "3": "'",
-    "13": "k",
-    "23": "2",
-    "123": "l",
-    "4": "@",
-    "14": "c",
-    "24": "i",
-    "124": "f",
-    "34": "/",
-    "134": "m",
-    "234": "s",
-    "1234": "p",
-    "5": "\"",
-    "15": "e",
-    "25": "3",
-    "125": "h",
-    "35": "9",
-    "135": "o",
-    "235": "6",
-    "1235": "r",
-    "45": "^",
-    "145": "d",
-    "245": "j",
-    "1245": "g",
-    "345": ">",
-    "1345": "n",
-    "2345": "t",
-    "12345": "q",
-    "6": ",",
-    "16": "*",
-    "26": "5",
-    "126": "<",
-    "36": "-",
-    "136": "u",
-    "236": "8",
-    "1236": "v",
-    "46": ".",
-    "146": "%",
-    "246": "[",
-    "1246": "$",
-    "346": "+",
-    "1346": "x",
-    "2346": "!",
-    "12346": "&",
-    "56": ";",
-    "156": ":",
-    "256": "4",
-    "1256": "\\",
-    "356": "0",
-    "1356": "z",
-    "2356": "7",
-    "12356": "(",
-    "456": "_",
-    "1456": "?",
-    "2456": "w",
-    "12456": "]",
-    "3456": "#",
-    "13456": "y",
-    "23456": ")",
-    "123456": "=",
-}
 
-numbers = {
-    0: "245",
-    1: "1",
-    2: "12",
-    3: "14",
-    4: "145",
-    5: "15",
-    6: "124",
-    7: "1245",
-    8: "125",
-    9: "24"
-}
+class Key:
+    def __init__(self, type: str, note: int):
+        self.type = type
+        self.note = note
 
-dict = {
-    "a": "1",
-    "b": "12",
-    "c": "14",
-    "d": "145",
-    "e": "15",
-    "f": "124",
-    "g": "1245",
-    "h": "125",
-    "i": "24",
-    "j": "245",
-    "k": "13",
-    "l": "123",
-    "m": "134",
-    "n": "1345",
-    "o": "135",
-    "p": "1234",
-    "q": "12345",
-    "r": "1235",
-    "s": "234",
-    "t": "2345",
-    "u": "136",
-    "v": "1236",
-    "w": "2456",
-    "x": "1346",
-    "y": "13456",
-    "z": "1356",
-}
 
-punc = {
-    ",": "2",
-    ";": "23",
-    ":": "25",
-    ".": "256",
-    "?": "236",
-    "!": "235",
-}
+class Text:
+    def __init__(self, text: str):
+        self.text = text
 
-symbols = {
-    "number": "3456",
-    "sharp": "146",
-    "flat": "126",
-    "natural": "16",
-    "db": "126 13",  # double bar
-    "sdb": "126 13 3",  # sectional double bar
-    "er": "1346",  # eighth rest
-    "qr": "1236",  # quarter rest
-    "hr": "136",  # half rest
-    "wr": "134",  # whole rest
-    "dot": "3"
-}
 
-notes = {
-    0: "145",
-    2: "15",
-    4: "124",
-    5: "1245",
-    7: "125",
-    9: "24",
-    11: "245",
-}
+# Example data - {"length": "half"}
+class Rest:
+    def __init__(self, length: str):
+        self.length = length
 
-lengths = {
-    "eighth": "",
-    "quarter": "6",
-    "half": "3",
-    "whole": "36"
-}
 
-octaves = {
-    0: "4 4",
-    1: "4",
-    2: "45",
-    3: "456",
-    4: "5",
-    5: "46",
-    6: "56",
-    7: "6",
-    8: "6 6"
-}
+# Example data - {"length": "dotted quarter", "note": 35, "sign": "none"},
+#                {"length": "eighth", "note": 41, "sign": "flat"}
+class Note:
+    def __init__(self, length: str, note: int, sign: str, tie: bool, slur: str):
+        self.length = length
+        self.note = note
+        self.sign = sign
+        self.tie = tie
+        self.slur = slur
 
-noteShift = {
-    "C": 0,
-    "D": 2,
-    "E": 4,
-    "F": 5,
-    "G": 7,
-    "A": 9,
-    "B": 11
-}
 
-flatKeys = [
-    {"type": "flat", "note": 10},
-    {"type": "flat", "note": 3},
-    {"type": "flat", "note": 8},
-    {"type": "flat", "note": 1},
-    {"type": "flat", "note": 6},
-    {"type": "flat", "note": 11},
-    {"type": "flat", "note": 4}
-]
+class Measure:
+    def __init__(self, number: int, data: list[Rest | Note | Text]):
+        self.number = number
+        self.data = data
+        self.length = 0
 
-sharpKeys = [
-    {"type": "sharp", "note": 6},
-    {"type": "sharp", "note": 1},
-    {"type": "sharp", "note": 8},
-    {"type": "sharp", "note": 3},
-    {"type": "sharp", "note": 10},
-    {"type": "sharp", "note": 5},
-    {"type": "sharp", "note": 0}
-]
+    def addText(self, text: Text):
+        self.data.append(text)
 
-def shiftDown(code):
+    def addNote(self, note: Rest | Note | Text):
+        self.data.append(note)
+
+    def print(self, printNumber: bool, lastNote: int, key: list[Key]):
+        str = ""
+        firstNote = True
+        trimmedStr = ""
+        if printNumber:  # Prints the measure number if needed
+            str += getChar(symbols["number"]) + \
+                getChar(numbers[self.number]) + " "
+        for d in self.data:  # For each item in the measure
+            if isinstance(d, Rest):
+                length = d.length
+                if len(length.split()) == 1:  # If length is just one word
+                    str += getChar(symbols[length[0] + "r"])
+                    trimmedStr += getChar(symbols[length[0] + "r"])
+                elif length.split()[0] == "dotted":  # If length has dotted in front
+                    str += getChar(symbols[length.split()[1]
+                                   [0] + "r"]) + getChar(symbols["dot"])
+                    trimmedStr += getChar(symbols[length.split()
+                                          [1][0] + "r"]) + getChar(symbols["dot"])
+            elif isinstance(d, Text):
+                if len(d.text.split()) == 1:
+                    str += ">" + d.text
+                    if d.text in dynamics:
+                        trimmedStr += ">" + d.text
+                else:
+                    if lastNote > 0:
+                        str += " >" + d.text + "> "
+                    else:
+                        str += ">" + d.text + "> "
+                lastNote = -1
+            elif isinstance(d, Note):
+                length = d.length
+                note = d.note
+                sign = d.sign
+                tie = d.tie
+                slur = d.slur
+
+                # Print start of slur character
+                if slur == "start":
+                    str += getChar(symbols["startSlur"])
+                    trimmedStr += getChar(symbols["startSlur"])
+                # Print slur character
+                elif slur == "slur":
+                    str += getChar(symbols["slur"])
+                    trimmedStr += getChar(symbols["slur"])
+
+                # If there is no last note or the last note was more than
+                # 8 half-steps away, print an octave marker
+                if lastNote < 0 or abs(note - lastNote) > 8:
+                    if not firstNote:
+                        trimmedStr += getChar(octaves[(note + 8) // 12])
+                    str += getChar(octaves[(note + 8) // 12])
+                # Else if the note is within 4 half-steps of the last note
+                # and is on a new octave print octave marker
+                elif abs(note - lastNote) > 4:
+                    if not (note + 8) // 12 == (lastNote + 8) // 12:
+                        if not firstNote:
+                            trimmedStr += getChar(octaves[(note + 8) // 12])
+                        str += getChar(octaves[(note + 8) // 12])
+
+                # Check for accidentals
+                if not sign == "none":
+                    if sign == "natural":
+                        # If note is natural, check for that note in the key signature and remove it
+                        key = [k for k in key if k.note != note]
+                        str += getChar(symbols[sign])
+                        trimmedStr += getChar(symbols[sign])
+                    else:
+                        # Append the new accidental to the key signature
+                        key.append(Key(sign, (note + 8) % 12))
+                        str += getChar(symbols[sign])
+                        trimmedStr += getChar(symbols[sign])
+
+                if len(length.split()) == 1:
+                    str += makeNote(note, length, key)
+                    trimmedStr += makeNote(note, length, key)
+                elif length.split()[0] == "dotted":
+                    str += makeNote(note, length.split()
+                                    [1], key) + getChar(symbols["dot"])
+                    trimmedStr += makeNote(note, length.split()
+                                           [1], key) + getChar(symbols["dot"])
+
+                # Print end of slur character
+                if slur == "end":
+                    str += getChar(symbols["endSlur"])
+                    trimmedStr += getChar(symbols["endSlur"])
+
+                # Print tie character
+                if tie:
+                    str += getChar(symbols["tie"])
+                    trimmedStr += getChar(symbols["tie"])
+
+                lastNote = note
+                firstNote = False
+        self.length = len(str)
+        return [lastNote, str, trimmedStr]
+
+
+# Example time - [3, 4]
+class Song:
+    def __init__(self, key: list[Key], beatName: str, time: list[int], text: str, measures: list[Measure]):
+        self.key = key
+        self.beatName = beatName
+        self.time = time
+        self.text = text
+        self.measures = measures
+        self.lineWidth = 36
+        self.measureSize = 16  # Determines how many measures are on a line
+
+    def addMeasure(self, measure: Measure):
+        self.measures.append(measure)
+
+    def write(self, file: str):
+        res = ""
+        if self.text:
+            res += self.text + " "
+        for k in self.key:  # Print every flat or sharp in the key signature
+            res += getChar(symbols[k.type])
+        # Print number sign and time signature
+        if len(self.beatName):
+            res += getChar(symbols[self.beatName])
+        else:
+            res += getChar(symbols["number"])
+            res += getChar(numbers[self.time[0]])
+            res += getChar(shiftDown(numbers[self.time[1]]))
+
+        i = ((self.lineWidth - len(res)) // 2) + 3
+        if self.text:
+            while i > 0:
+                res = " " + res
+                i -= 1
+        else:
+            res = "  " + res
+        res += "\n"
+
+        i = 0
+        lastNote = -1
+        runningLength = 0
+        lastMeasure = ""
+        for m in self.measures:  # For each measure, print and check for new line
+            mData = m.print(i % self.measureSize == 0, lastNote, self.key)
+
+            lastNote = mData[0]
+            thisMeasure = mData[2]
+            if thisMeasure == lastMeasure or (len(lastMeasure) > 0 and lastMeasure[0] == ">" and thisMeasure == lastMeasure[2:]):
+                runningLength += 1
+                if runningLength > self.lineWidth:
+                    res += "\n  "
+                    runningLength = 1
+                if res.split()[-1][0:2] == getChar(symbols["repeat"]) + getChar(symbols["number"]):
+                    # Get number of repeated measures and add 1
+                    res = res[0:-2] + getChar(numbers[list(numbers.keys())[list(numbers.values()).index(
+                        getDots(res.split(" ")[-2][2:]))] + 1])
+                    lastNote = -1
+                elif res.split()[-2] == getChar(symbols["repeat"]) and res.split()[-1] == getChar(symbols["repeat"]):
+                    res = res[:-4] + getChar(symbols["repeat"]) + getChar(
+                        symbols["number"]) + getChar(numbers[3])
+                    runningLength -= 3
+                    lastNote = -1
+                else:
+                    res += getChar(symbols["repeat"])
+            else:
+                runningLength += m.length
+                if runningLength > self.lineWidth:
+                    mData = m.print(i % self.measureSize == 0, -1, self.key)
+                    mData[1] = "  " + mData[1]
+                    res += "\n"
+                    runningLength = m.length
+                res += mData[1]
+            lastMeasure = mData[2]
+            if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
+                res += " "
+            elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
+                res += "\n"
+                lastNote = -1
+            i += 1
+
+        res += getChar(symbols["db"])  # Print double bar line
+        res += "\n"
+        with open(file, "w") as f:
+            f.write(res)
+
+
+def shiftDown(code: str):  # Shifts a dot code down by one
     newCode = ""
     for c in code:
         newCode += str(int(c) + 1)
     return newCode
 
 
-def printBraille(s):
-    isNumber = False
-    isSpace = False
-    for c in s:
-        if c in dict:
-            if isNumber and not isSpace:
-                print(asciiTable["56"], end="")
-            print(asciiTable[dict[c]], end="")
-            isNumber = False
-            isSpace = False
-        elif c in punc:
-            print(asciiTable[punc[c]], end="")
-        elif c.isdigit() and int(c) in numbers:
-            if not isNumber:
-                print(asciiTable[symbols["number"]], end="")
-            print(asciiTable[numbers[int(c)]], end="")
-            isNumber = True
-            isSpace = False
-        elif c == " ":
-            print(c, end="")
-            isNumber = False
-            isSpace = True
-    print()
-
-
-def printMult(s):
-    arr = s.split()
+def getChar(code: str):  # Returns the character value of the provided dot code(s)
+    arr = code.split()
+    str = ""
     for c in arr:
-        print(asciiTable[c], end="")
+        str += chars[dots.index(c)]
+    return str
 
 
-def makeNote(name, length):
-    nameArr = list(notes[name]) + list(lengths[length])
-    nameArr.sort()
-    return "".join(nameArr)
+def getDots(char: str):  # Returns the character value of the provided dot code(s)
+    return dots[chars.index(char)]
 
 
-def printSymbol(dict, value):
-    printMult(dict[value])
+def getAscii(code: str):  # Returns the braille ascii character for the provided dot code(s)
+    arr = code.split()
+    str = ""
+    for c in arr:
+        str += ascii[dots.index(c)]
+    return str
 
 
-def printNumber(num):
-    printSymbol(symbols, "number")
-    for c in num:
-        printSymbol(numbers, int(c))
-
-
-def printNote(note, length, key):
+# Combines note dot code with length code and checks for accidentals
+def makeNote(note: int, length: str, key: list[Key]):
     for k in key:
-        if (note + 8) % 12 == k["note"]:
-            if k["type"] == "flat":
+        if (note + 8) % 12 == k.note:
+            if k.type == "flat":
                 note += 1
-            elif k["type"] == "sharp":
+            elif k.type == "sharp":
                 note -= 1
-    print(asciiTable[makeNote((note + 8) % 12, length)], end="")
+    chars = list(notes[(note + 8) % 12]) + list(lengths[length])
+    chars.sort()
+    return getChar("".join(chars))
 
 
-class Song:
-    def __init__(self, key, time, measures):
-        self.key = key
-        self.time = time
-        self.measures = measures
-        self.measureSize = 8
+def handleXML(input: str | None):
+    output: str = ""
+    if type(input) == str:
+        output = input
+    return output
 
-    def addMeasure(self, measure):
-        self.measures.append(measure)
 
-    def print(self):
-        for k in self.key:
-            printSymbol(symbols, k["type"])
-        printSymbol(symbols, "number")
-        printSymbol(numbers, self.time[0])
-        print(asciiTable[shiftDown(numbers[self.time[1]])], end="")
-        print()
+# Parsing the MusicXML file
+def parseFile(file: str):
+    tree = ET.parse(file)
+    root = tree.getroot()
+
+    firstMeasure = root.find("./part/measure")
+
+    if firstMeasure is None:
+        raise Exception("Provided file has no measures")
+
+    beat = int(handleXML(firstMeasure.findall(
+        "./attributes/time/beats")[0].text))
+    beatType = int(handleXML(firstMeasure.findall(
+        "./attributes/time/beat-type")[0].text))
+    beatName = ""
+    time = firstMeasure.find("./attributes/time")
+    if time is not None and len(time.attrib) > 0 and time.attrib["symbol"] is not None:
+        beatName = time.attrib["symbol"]
+    accidentals = int(handleXML(firstMeasure.findall(
+        "./attributes/key/fifths")[0].text))
+    text = ""
+    direction = firstMeasure.find("./direction")
+    if direction is not None and direction.find("./direction-type/words") is not None and \
+            direction.find("./direction-type/words").text.replace(".", "'") not in abbreviations:  # type:ignore
+        text = "," + \
+            handleXML(firstMeasure.findall(
+                "./direction/direction-type/words")[0].text).lower() + "4"
+        el = root.find("./part/measure/direction")
+        if el is not None:
+            firstMeasure.remove(el)
+
+    # Add accidentals to key signature
+    key = []
+    if accidentals > 0:
         i = 0
-        lastNote = -1
-        for m in self.measures:
-            lastNote = m.print(i % self.measureSize == 0, lastNote, self.key)
-            if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                print("   ", end="")
-            elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                print()
+        while i < abs(accidentals):
+            key.append(Key(sharpKeys[i]["type"], sharpKeys[i]["note"]))
+            i += 1
+    elif accidentals < 0:
+        i = 0
+        while i < abs(accidentals):
+            key.append(Key(flatKeys[i]["type"], flatKeys[i]["note"]))
             i += 1
 
-        printSymbol(symbols, "db")
-        print()
+    song = Song(key, beatName, [beat, beatType], text, [])
+    lastCresc = ""
 
+    notes = list(root.findall("./part/measure/note"))
+    slur = 0
+    longSlur = False
 
-class Measure:
-    def __init__(self, number, data):
-        self.number = number
-        self.data = data
-
-    def addNote(self, note):
-        self.data.append(note)
-
-    def print(self, printMeasure, lastNote, key):
-        if printMeasure:
-            printNumber(self.number)
-            print("   ", end="")
-        for d in self.data:
-            length = d["length"]
-            if d["type"] == "rest":
-                if len(length.split()) == 1:
-                    printSymbol(symbols, length[0] + "r")
-                elif length.split()[0] == "dotted":
-                    printSymbol(symbols, length.split()[1][0] + "r")
-                    printSymbol(symbols, "dot")
-            if (d["type"] == "note"):
-                note = d["note"]
-                if lastNote < 0 or abs(note - lastNote) > 8:
-                    printSymbol(octaves, (note + 8) // 12)
-                elif abs(note - lastNote) > 4:
-                    if not (note + 8) // 12 == (lastNote + 8) // 12:
-                        printSymbol(octaves, (note + 8) // 12)
-
-                if not d["sign"] == "none":
-                    if d["sign"] == "natural":
-                        key = [k for k in key if k.get("note") != d["note"]]
-                        printSymbol(symbols, d["sign"])
+    for child in root.findall("./part/measure"):  # For each measure in XML
+        m = Measure(int(child.attrib["number"]), [])
+        childList = list(child)
+        for c in child:
+            lastChild = True if childList.index(
+                c) == len(childList) - 1 else False
+            if c.tag == "direction":
+                tag = c.find("./direction-type/words")
+                if tag is not None and tag.text:
+                    tag = tag.text.lower().replace(".", "'")
+                    if tag in abbreviations:
+                        m.addText(Text(abbreviations[tag]))
                     else:
-                        key.append(
-                            {"type": d["sign"], "note": (d["note"] + 8) % 12})
-                        printSymbol(symbols, d["sign"])
+                        m.addText(Text(tag))
+                tag = c.find("./direction-type/dynamics")
+                if tag is not None and tag[0] is not None:
+                    m.addText(Text(tag[0].tag))
+                tag = c.find("./direction-type/wedge")
+                if tag is not None and tag.attrib["type"] is not None:
+                    if tag.attrib["type"] == "crescendo":
+                        lastCresc = "14"
+                        m.addText(Text(getChar(lastCresc)))
+                    elif tag.attrib["type"] == "diminuendo":
+                        lastCresc = "145"
+                        m.addText(Text(getChar(lastCresc)))
+                    elif tag.attrib["type"] == "stop":
+                        if lastChild or childList[childList.index(c) + 1].tag == "barline":
+                            m.addText(Text(getChar(shiftDown(lastCresc))))
+                        else:
+                            m.addText(
+                                Text(getChar(shiftDown(lastCresc)) + "'"))
+                        lastCresc = ""
+            elif c.tag == "note":
+                if slur > 0:
+                    slur -= 1
+                if c.findall("./pitch"):  # If note is a note
+                    # Find absolute pitch value from octave and note name
+                    pitch: int = int(handleXML(c.findall("./pitch/octave")[0].text)) * 12 - 8 \
+                        + noteShift[handleXML(c.findall("./pitch/step")[0].text)]
+                    sign: str = "none"
+                    tie = False
+                    slurValue = ""
+                    if not longSlur and slur > 0:
+                        slurValue = "slur"
+                    if c.find("./notations/tied") is not None and \
+                            handleXML(c.findall("./notations/tied")[0].attrib["type"]) == "start":  # Check for tie
+                        tie = True
+                    if c.find("./notations/slur") is not None and \
+                            handleXML(c.findall("./notations/slur")[0].attrib["type"]) == "start":  # Check for slur start
+                        currentNote = notes.index(c)
+                        slurValue = "start"
+                        for i in range(len(notes) - currentNote - 1):
+                            if notes[i + currentNote + 1].find("./notations/slur") is not None:
+                                longSlur = True
+                                if i <= 2:
+                                    longSlur = False
+                                    slurValue = ""
+                                slur = i + 2
+                                break
+                    if slur == 1 and longSlur:
+                        slurValue = "end"
+                        longSlur = False
+                    if c.find("./accidental") is not None:  # Check for accidental
+                        sign = handleXML(c.findall("./accidental")[0].text)
+                    if c.find("./pitch/alter") is not None:  # Check for pitch shift
+                        pitch += int(handleXML(c.findall("./pitch/alter")
+                                     [0].text))
+                    length: str = handleXML(c.findall("./type")[0].text)
+                    if c.findall("./dot"):  # Check for dotted note
+                        length = "dotted " + length
+                    note = Note(length, pitch, sign, tie, slurValue)
+                    m.addNote(note)
+                elif c.findall("./rest"):  # If note is a rest
+                    if len(c.findall("./type")) > 0:
+                        note = Rest(handleXML(c.findall("./type")[0].text))
+                    else:
+                        note = Rest("measure")
+                    m.addNote(note)
+        song.addMeasure(m)
 
-                if len(length.split()) == 1:
-                    printNote(note, length, key)
-                elif length.split()[0] == "dotted":
-                    printNote(note, length.split()[1], key)
-                    printSymbol(symbols, "dot")
-
-                lastNote = note
-        return lastNote
+    return song
 
 
-m1 = Measure("1", [{"type": "rest", "length": "half"}, {
-             "type": "note", "length": "quarter", "note": 30, "sign": "none"}])
-m2 = Measure("2", [{"type": "note", "length": "half", "note": 38, "sign": "none"}, {
-    "type": "note", "length": "quarter", "note": 35, "sign": "none"}])
-m3 = Measure("3", [{"type": "note", "length": "dotted quarter", "note": 35, "sign": "none"}, {
-    "type": "note", "length": "eighth", "note": 34, "sign": "sharp"}, {
-    "type": "note", "length": "quarter", "note": 35, "sign": "none"},])
-m4 = Measure("4", [{"type": "note", "length": "half", "note": 37, "sign": "none"}, {
-    "type": "note", "length": "quarter", "note": 34, "sign": "sharp"}])
-m5 = Measure("5", [{"type": "note", "length": "half", "note": 30, "sign": "none"}, {
-    "type": "rest", "length": "quarter"}])
-
-song = Song([{"type": "flat", "note": 10}, {
-            "type": "flat", "note": 3}], [3, 4], [m1, m2, m3, m4, m5])
-song.print()
-
-
-# m21 = Measure("1", [
-#     {"type": "note", "length": "half", "note": 52, "sign": "none"},
-# ])
-# m22 = Measure("2", [
-#     {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
-#     {"type": "note", "length": "quarter", "note": 50, "sign": "flat"},
-# ])
-# m23 = Measure("3", [
-#     {"type": "note", "length": "half", "note": 49, "sign": "none"},
-# ])
-# m24 = Measure("4", [
-#     {"type": "note", "length": "eighth", "note": 40, "sign": "none"},
-#     {"type": "note", "length": "eighth", "note": 45, "sign": "none"},
-#     {"type": "note", "length": "eighth", "note": 49, "sign": "none"},
-#     {"type": "note", "length": "eighth", "note": 52, "sign": "none"}
-# ])
-# m25 = Measure("5", [
-#     {"type": "note", "length": "half", "note": 52, "sign": "none"},
-# ])
-# m26 = Measure("6", [
-#     {"type": "note", "length": "quarter", "note": 51, "sign": "natural"},
-#     {"type": "note", "length": "quarter", "note": 52, "sign": "none"},
-# ])
-# m27 = Measure("7", [
-#     {"type": "note", "length": "half", "note": 54, "sign": "none"},
-# ])
-# m28 = Measure("8", [
-#     {"type": "note", "length": "half", "note": 49, "sign": "none"},
-# ])
-
-# song2 = Song([{"type": "flat", "note": 10}], [2, 4], [
-#              m21, m22, m23, m24, m25, m26, m27, m28])
-# song2.print()
-
-
-tree = ET.parse('test2.musicxml')
-root = tree.getroot()
-
-firstMeasure = root.findall("./part/measure/attributes")[0]
-beat = int(firstMeasure.findall("./time/beats")[0].text)
-beatType = int(firstMeasure.findall("./time/beat-type")[0].text)
-accidentals = int(firstMeasure.findall("./key/fifths")[0].text)
-
-key = []
-
-if accidentals > 0:
-    i = 0
-    while i < abs(accidentals):
-        key.append(sharpKeys[i])
-        i += 1
-elif accidentals < 0:
-    i = 0
-    while i < abs(accidentals):
-        key.append(flatKeys[i])
-        i += 1
-
-song = Song(key, [beat, beatType], [])
-
-for child in root.findall("./part/measure"):
-    m = Measure(child.attrib["number"], [])
-    for c in child.findall("./note"):
-        if c.findall("./pitch"):
-            pitch = int(c.findall("./pitch/octave")[0].text) * 12 - 8 + noteShift[c.findall("./pitch/step")[0].text]
-            sign = "none"
-            if c.findall("./accidental"):
-                sign = c.findall("./accidental")[0].text
-            if c.findall("./pitch/alter"):
-                pitch += int(c.findall("./pitch/alter")[0].text)
-            length = c.findall("./type")[0].text
-            if c.findall("./dot"):
-                length = "dotted " + length
-            note = {"type": "note", "length": length, "note": pitch, "sign": sign}
-            m.addNote(note)
-        elif c.findall("./rest"):
-            note = {"type": "rest", "length": c.findall("./type")[0].text}
-            m.addNote(note)
-    song.addMeasure(m)
-
-song.print()
+song = parseFile("dynamics.musicxml")
+song.write("song.brf")
