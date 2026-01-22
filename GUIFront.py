@@ -6,7 +6,10 @@ import os
 # from PIL import Image, ImageTk
 
 def on_button_click():
-    open_xml_file_dialog()
+    filename = open_xml_file_dialog()
+    print("Filename = ", filename)
+    window.frame.update_textbox(f"Selected file: {filename}\nProcessing complete.")
+
 
 def open_xml_file_dialog():
     # Create a root window but hide it, as we only need the dialog box
@@ -26,9 +29,12 @@ def open_xml_file_dialog():
         process_xml_file(file_path)
         #label.configure(text=f"Selected file: {filename}")
         print ("Processing complete. File named", filename)
+        return filename
+        
     else:
         #label.configure(text="No file selected.")
         print("No file selected.")
+        return "No file selected."
 
 def process_xml_file(filepath):
     # This is where you would put your XML processing logic
@@ -67,8 +73,19 @@ class MyFrame1(ctk.CTkFrame):
         self.label.update()
         self.label.grid(row=0, column=0, padx=20)
 
+        self.textbox = ctk.CTkTextbox(self, width=300, height=100)
+        self.textbox.insert("0.0", "No file selected.")
+        self.textbox.configure(state=tk.DISABLED)
+        self.textbox.grid(row=2, column=0, pady=10, padx=20)
+        
         self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click)
         self.button.grid(row=1, column=0, pady=10, padx=20)
+    
+    def update_textbox(self, text):
+        self.textbox.configure(state=tk.NORMAL)
+        self.textbox.delete("0.0", tk.END)
+        self.textbox.insert("0.0", text)
+        self.textbox.configure(state=tk.DISABLED)
 
         # image_path = 'musicfileicon.png' 
         # self.image = Image.open(image_path)
@@ -101,6 +118,7 @@ class App(ctk.CTk):
         self.frame2.grid(row=0, column=1, pady=20, padx=20)
         #self.frame2.pack(pady=20, padx=60, fill="both", expand=True)
         #self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click)
+
 
 window = App()
 window.title("XML File Processor")
