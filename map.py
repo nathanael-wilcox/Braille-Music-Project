@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+import cadquery as cq
 
 ascii = ["\u2800", "\u2801", "\u2802", "\u2803", "\u2804", "\u2805", "\u2806", "\u2807", "\u2808", "\u2809", "\u280a", "\u280b", "\u280c", "\u280d", "\u280e", "\u280f", "\u2810", "\u2811", "\u2812", "\u2813", "\u2814", "\u2815", "\u2816", "\u2817", "\u2818", "\u2819", "\u281a", "\u281b", "\u281c", "\u281d", "\u281e", "\u281f",
          "\u2820", "\u2821", "\u2822", "\u2823", "\u2824", "\u2825", "\u2826", "\u2827", "\u2828", "\u2829", "\u282a", "\u282b", "\u282c", "\u282d", "\u282e", "\u282f", "\u2830", "\u2831", "\u2832", "\u2833", "\u2834", "\u2835", "\u2836", "\u2837", "\u2838", "\u2839", "\u283a", "\u283b", "\u283c", "\u283d", "\u283e", "\u283f"]
@@ -27,6 +28,8 @@ dynamics = ["pppppp", "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", 
             "fp", "pf", "sf", "sfz", "sff", "sffz", "sfff", "sfffz", "sfp", "sfpp", "rfz", "rf", "fz", "m", "r", "z", "s", "n"]
 punctuation = {",": "2", ";": "23", "'": "3", ":": "25", "-": "36", ".": "256", "_": "6",
                "!": "235", "oq": "236", "?": "236", "cq": "356", "(": "2356", ")": "2356", "/": "34"}
+
+LINE_WIDTH = 36
 
 
 class Key:
@@ -178,7 +181,6 @@ class Song:
         self.time = time
         self.text = text
         self.measures = measures
-        self.lineWidth = 36
         self.measureSize = 16  # Determines how many measures are on a line
 
     def addMeasure(self, measure: Measure):
@@ -198,7 +200,7 @@ class Song:
             res += getChar(numbers[self.time[0]])
             res += getChar(shiftDown(numbers[self.time[1]]))
 
-        i = ((self.lineWidth - len(res)) // 2) + 3
+        i = ((LINE_WIDTH - len(res)) // 2) + 3
         if self.text:
             while i > 0:
                 res = " " + res
@@ -223,7 +225,7 @@ class Song:
             thisMeasure = mData[2]
             if thisMeasure == lastMeasure or (len(lastMeasure) > 0 and lastMeasure[0] == ">" and thisMeasure == lastMeasure[2:]):
                 runningLength += 1
-                if runningLength > self.lineWidth or (hasLyrics and lyricLength > self.lineWidth):
+                if runningLength > LINE_WIDTH or (hasLyrics and lyricLength > LINE_WIDTH):
                     res += "\n  "
                     runningLength = 1
                     newLyrics = m.lyrics
@@ -256,7 +258,7 @@ class Song:
                     [getChar(punctuation[ch]) if ch in punctuation else ch for ch in newLyrics])
                 newLyrics = newLyrics.lower()
                 lyricLength += len(newLyrics)
-                if runningLength > self.lineWidth or (hasLyrics and lyricLength > self.lineWidth):
+                if runningLength > LINE_WIDTH or (hasLyrics and lyricLength > LINE_WIDTH):
                     mData = m.print(i % self.measureSize == 0, -1, self.key)
                     mData[1] = "  " + mData[1]
                     res += "\n"
@@ -275,7 +277,7 @@ class Song:
 
         res += getChar(symbols["db"])  # Print double bar line
 
-        if lyrics == "":
+        if lyrics.strip() == "":
             with open(file, "w") as f:
                 f.write(res)
         else:
@@ -304,7 +306,7 @@ def getChar(code: str):  # Returns the character value of the provided dot code(
     return str
 
 
-def getDots(char: str):  # Returns the character value of the provided dot code(s)
+def getDots(char: str):  # Returns the dot code of the provided character code
     return dots[chars.index(char)]
 
 
@@ -480,5 +482,58 @@ def parseFile(file: str):
     return song
 
 
+def makeStl(file: str, stl: str):
+    with open(file, "r") as f:
+        th = 1.2
+        dia = 1.6
+        a = 2.5
+        l = 6.0
+        e = 10
+        dr = 0.8
+        dh = 0.6
+        r = 0.6
+        pad = 8
+        dotValues = [(-a, -a/2), (0, -a/2), (a, -a/2),
+                     (-a, a/2), (0, a/2), (a, a/2)]
+        points = []
+
+        width = 0
+        # width = LINE_WIDTH
+        height = 0
+
+        for i, line in enumerate(f):
+            line = line.rstrip()
+            height += 1
+            curWidth = 0
+            for j, char in enumerate(line):
+                curWidth += 1
+                charDots = getDots(char)
+                for d in charDots:
+                    dv = list(dotValues[int(d)-1])
+                    dv[0] += i*e
+                    dv[1] += j*l
+                    points.append(tuple(dv))
+            if curWidth > width:
+                width = curWidth
+
+        plate = (cq.Workplane("XY")
+                 .box(height * 2 * a + (height - 1) * (e - 2 * a) + dia + pad, width * a + (width - 1) * (l - a) + dia + pad, th)
+                 .edges("|Z")
+                 .fillet(r)
+                 )
+
+        result = (cq.Workplane("XY")
+                  .pushPoints(points)
+                  .sphere(dr)
+                  .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh)))
+                  .split(True, False)
+                  .union(plate)
+                  )
+
+        cq.exporters.export(result, stl)
+
+
 song = parseFile("lyrics.musicxml")
 song.write("song.brf")
+
+makeStl("song.brf", "res.stl")
