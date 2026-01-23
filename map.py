@@ -25,6 +25,8 @@ abbreviations = {"ritardando": "rit'", "crescendo": "cr'",
                  "cresc'": "cr'", "decrescendo": "decr'", "decresc'": "decr'"}
 dynamics = ["pppppp", "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "ffff", "fffff", "ffffff",
             "fp", "pf", "sf", "sfz", "sff", "sffz", "sfff", "sfffz", "sfp", "sfpp", "rfz", "rf", "fz", "m", "r", "z", "s", "n"]
+punctuation = {",": "2", ";": "23", "'": "3", ":": "25", "-": "36", ".": "256", "_": "6",
+               "!": "235", "oq": "236", "?": "236", "cq": "356", "(": "2356", ")": "2356", "/": "34"}
 
 
 class Key:
@@ -59,6 +61,7 @@ class Measure:
     def __init__(self, number: int, data: list[Rest | Note | Text]):
         self.number = number
         self.data = data
+        self.lyrics = ""
         self.length = 0
 
     def addText(self, text: Text):
@@ -66,6 +69,9 @@ class Measure:
 
     def addNote(self, note: Rest | Note | Text):
         self.data.append(note)
+
+    def addLyrics(self, lyrics: str):
+        self.lyrics = lyrics
 
     def print(self, printNumber: bool, lastNote: int, key: list[Key]):
         str = ""
@@ -113,8 +119,8 @@ class Measure:
                     trimmedStr += getChar(symbols["slur"])
 
                 # If there is no last note or the last note was more than
-                # 8 half-steps away, print an octave marker
-                if lastNote < 0 or abs(note - lastNote) > 8:
+                # 7 half-steps away, print an octave marker
+                if abs(note - lastNote) > 7:
                     if not firstNote:
                         trimmedStr += getChar(octaves[(note + 8) // 12])
                     str += getChar(octaves[(note + 8) // 12])
@@ -204,17 +210,31 @@ class Song:
         i = 0
         lastNote = -1
         runningLength = 0
+        lyricLength = 0
         lastMeasure = ""
+        lyrics = ""
         for m in self.measures:  # For each measure, print and check for new line
             mData = m.print(i % self.measureSize == 0, lastNote, self.key)
+            hasLyrics = False
+            if m.lyrics != "":
+                hasLyrics = True
 
             lastNote = mData[0]
             thisMeasure = mData[2]
             if thisMeasure == lastMeasure or (len(lastMeasure) > 0 and lastMeasure[0] == ">" and thisMeasure == lastMeasure[2:]):
                 runningLength += 1
-                if runningLength > self.lineWidth:
+                if runningLength > self.lineWidth or (hasLyrics and lyricLength > self.lineWidth):
                     res += "\n  "
                     runningLength = 1
+                    newLyrics = m.lyrics
+                    newLyrics = "".join(
+                        ["_" + ch if ch.isupper() else ch for ch in newLyrics])
+                    newLyrics = "".join(
+                        [getChar(punctuation[ch]) if ch in punctuation else ch for ch in newLyrics])
+                    newLyrics = newLyrics.lower()
+                    lyrics += newLyrics
+                    lyrics += "\n"
+                    lyricLength = 0
                 if res.split()[-1][0:2] == getChar(symbols["repeat"]) + getChar(symbols["number"]):
                     # Get number of repeated measures and add 1
                     res = res[0:-2] + getChar(numbers[list(numbers.keys())[list(numbers.values()).index(
@@ -229,11 +249,21 @@ class Song:
                     res += getChar(symbols["repeat"])
             else:
                 runningLength += m.length
-                if runningLength > self.lineWidth:
+                newLyrics = m.lyrics
+                newLyrics = "".join(
+                    ["_" + ch if ch.isupper() else ch for ch in newLyrics])
+                newLyrics = "".join(
+                    [getChar(punctuation[ch]) if ch in punctuation else ch for ch in newLyrics])
+                newLyrics = newLyrics.lower()
+                lyricLength += len(newLyrics)
+                if runningLength > self.lineWidth or (hasLyrics and lyricLength > self.lineWidth):
                     mData = m.print(i % self.measureSize == 0, -1, self.key)
                     mData[1] = "  " + mData[1]
                     res += "\n"
                     runningLength = m.length
+                    lyrics += "\n"
+                    lyricLength = len(newLyrics)
+                lyrics += newLyrics
                 res += mData[1]
             lastMeasure = mData[2]
             if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
@@ -244,9 +274,19 @@ class Song:
             i += 1
 
         res += getChar(symbols["db"])  # Print double bar line
-        res += "\n"
-        with open(file, "w") as f:
-            f.write(res)
+
+        if lyrics == "":
+            with open(file, "w") as f:
+                f.write(res)
+        else:
+            with open(file, "w") as f:
+                lyricLines = lyrics.split("\n")
+                noteLines = res.split("\n")
+                f.write(noteLines[0] + "\n")
+                for x, line in enumerate(noteLines):
+                    if x > 0:
+                        f.write(
+                            lyricLines[x - 1] + "\n  " + line.strip() + "\n")
 
 
 def shiftDown(code: str):  # Shifts a dot code down by one
@@ -347,6 +387,8 @@ def parseFile(file: str):
     slur = 0
     longSlur = False
 
+    lyrics = ""
+
     for child in root.findall("./part/measure"):  # For each measure in XML
         m = Measure(int(child.attrib["number"]), [])
         childList = list(child)
@@ -415,20 +457,28 @@ def parseFile(file: str):
                         pitch += int(handleXML(c.findall("./pitch/alter")
                                      [0].text))
                     length: str = handleXML(c.findall("./type")[0].text)
-                    if c.findall("./dot"):  # Check for dotted note
+                    if c.find("./dot") is not None:  # Check for dotted note
                         length = "dotted " + length
                     note = Note(length, pitch, sign, tie, slurValue)
                     m.addNote(note)
+
+                    if c.find("./lyric/text") is not None and c.find("./lyric/syllabic") is not None:
+                        lyrics += c.find("./lyric/text").text  # type:ignore
+                        val = c.find("./lyric/syllabic")
+                        if val is not None and (val.text == "single" or val.text == "end"):
+                            lyrics += " "
                 elif c.findall("./rest"):  # If note is a rest
                     if len(c.findall("./type")) > 0:
                         note = Rest(handleXML(c.findall("./type")[0].text))
                     else:
                         note = Rest("measure")
                     m.addNote(note)
+        m.addLyrics(lyrics)
         song.addMeasure(m)
+        lyrics = ""
 
     return song
 
 
-song = parseFile("dynamics.musicxml")
+song = parseFile("lyrics.musicxml")
 song.write("song.brf")
