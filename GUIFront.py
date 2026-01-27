@@ -49,7 +49,7 @@ def process_xml_file(filepath):
         root.append(new_element)
 
         # Save the modified XML to a new file (or overwrite the old one)
-        new_filepath = filepath.replace(".musicxml", "_modified.xml")
+        new_filepath = filepath.replace(".musicxml", "_modified.musicxml")
         tree.write(new_filepath)
 
         # Catch Exceptions
