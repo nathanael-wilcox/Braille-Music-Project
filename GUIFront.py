@@ -58,6 +58,11 @@ def process_xml_file(filepath):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
+def optionmenu_callback(choice):
+    print("optionmenu dropdown clicked:", choice)
+
+
+
 # Handle window closing event
 def on_closing():
     if tk.messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -73,8 +78,8 @@ class MyFrame1(ctk.CTkFrame):
         #self.label.configure(text=label)
         #self.label.update()
         #self.label.grid(row=1, column=0, padx=20)
-        self.entry = ctk.CTkEntry(self, placeholder_text="CTkEntry", textvariable=tk.StringVar(value="Button Frame"), width=300, state=tk.DISABLED)
-        self.entry.pack(side='top',pady=10, padx=20)
+        #self.entry = ctk.CTkEntry(self, placeholder_text="CTkEntry", textvariable=tk.StringVar(value="Button Frame"), width=300, state=tk.DISABLED)
+        #self.entry.pack(side='top',pady=10, padx=20)
         
         # Frame Button
         self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click, width=150, height=50)
@@ -96,7 +101,10 @@ class MyFrame1(ctk.CTkFrame):
             image_label.image = tk_image  # Keep a reference to avoid garbage collection
             image_label.pack(side="left", padx=20, pady=10)
 
-        # I tried to add an image, but that is put on hold lol
+        self.optionmenu = ctk.CTkOptionMenu(self, values=["option 1", "option 2"],
+                                         command=optionmenu_callback)
+        self.optionmenu.pack(side="right", padx=20, pady=30)
+        self.optionmenu.set("option 1")
         
 class MyFrame2(ctk.CTkFrame):
     def __init__(self, master, label="", **kwargs):
