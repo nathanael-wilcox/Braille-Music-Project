@@ -1,3 +1,4 @@
+from fileinput import filename
 import customtkinter as ctk  #pip install customtkinter
 import tkinter as tk
 import tkinter.filedialog as filedialog
@@ -9,7 +10,6 @@ def on_button_click():
     filename = open_xml_file_dialog()
     if filename != "No file selected.":
         print("Filename = ", filename)
-    window.frame2.update_textbox(f"Selected file: {filename}")
 
 
 # Function to open file dialog and select XML file
@@ -29,7 +29,6 @@ def open_xml_file_dialog():
         print(f"Selected file: {file_path}")
         # Call the function to process the XML file
         process_xml_file(file_path)
-        print ("Processing complete. File named", filename)
         return filename
         
     else:
@@ -39,6 +38,16 @@ def open_xml_file_dialog():
 #  Function to process the selected XML file
 def process_xml_file(filepath):
     # This is where you would put your XML processing logic
+    text = ".musicxml"
+    if window.frame.get_optionmenu_var() == "Choose Output File Type":
+        window.frame2.update_textbox("Please select an output file type from the dropdown menu.")
+        return
+    elif window.frame.get_optionmenu_var() == "Generic Braille File (brf)":
+        convert_to_brf(filepath)   # Placeholder for actual conversion logic to BRF format
+        text = ".brf"
+    elif window.frame.get_optionmenu_var() == "CAD Braille File ([Insert File Type])":
+        convert_to_cad(filepath)   # Placeholder for actual conversion logic to CAD Braille File format
+        text = ".musicxml" # Placeholder for actual file extension of CAD Braille File
     try:
         # Parse the XML file
         tree = ET.parse(filepath)
@@ -49,8 +58,10 @@ def process_xml_file(filepath):
         root.append(new_element)
 
         # Save the modified XML to a new file (or overwrite the old one)
-        new_filepath = filepath.replace(".musicxml", "_modified.musicxml")
+        new_filepath = filepath.replace(".musicxml", text)
         tree.write(new_filepath)
+        window.frame2.add_textbox_content(f"Saved as: {new_filepath.split('/')[-1]}")  # Update textbox with new filename
+        print(f"Modified XML file saved as: {new_filepath}")
 
         # Catch Exceptions
     except ET.ParseError as e:
@@ -58,9 +69,17 @@ def process_xml_file(filepath):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
-def optionmenu_callback(choice):
-    print("optionmenu dropdown clicked:", choice)
+def convert_to_brf(filepath): #TODO: Implement actual conversion logic to BRF format
+    # Placeholder for conversion logic to BRF format
+    window.frame2.update_textbox("Converting to Generic Braille File (brf) format...\n")  # Add conversion status to textbox
 
+def convert_to_cad(filepath): #TODO: Implement actual conversion logic to CAD Braille File format
+    # Placeholder for conversion logic to CAD Braille File format
+    window.frame2.update_textbox("Converting to CAD Braille File format...\n")  # Add conversion status to textbox
+
+def optionmenu_callback(choice):
+    if window.frame.get_optionmenu_var() != "Choose Output File Type":
+        print("optionmenu dropdown clicked: ", choice)
 
 
 # Handle window closing event
@@ -83,9 +102,8 @@ class MyFrame1(ctk.CTkFrame):
         
         # Frame Button
         self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click, width=150, height=50)
-        self.button.grid(row=1, column=1, padx=10, pady=10)
+        self.button.grid(row=1, column=0, padx=10, pady=10)
         
-    
 
         try:
             image_path = 'musicfileicon.png' 
@@ -99,13 +117,16 @@ class MyFrame1(ctk.CTkFrame):
         if tk_image:
             image_label = ctk.CTkLabel(self, image=tk_image, bg_color="transparent", text='')
             image_label.image = tk_image  # Keep a reference to avoid garbage collection
-            image_label.grid(row=1, column=0, padx=10, pady=10)
+            image_label.grid(row=1, column=1, padx=10, pady=10)
 
         self.optionmenu_var = tk.StringVar(value="None")
-        self.optionmenu = ctk.CTkOptionMenu(self, values=["Generic Braille File (brf)", "CAD Braille File ([Insert File Type])"],
+        self.optionmenu = ctk.CTkOptionMenu(self, values=["Generic Braille File (brf)", "CAD Braille File [Insert File Type]"],
                                          command=optionmenu_callback, variable=self.optionmenu_var, width=200)
-        self.optionmenu.grid(row=2, column=1, padx=10, pady=20,)
+        self.optionmenu.grid(row=2, column=0, padx=10, pady=20,)
         self.optionmenu.set("Choose Output File Type")
+    
+    def get_optionmenu_var(self):
+        return self.optionmenu_var.get()
 
 
         
@@ -122,8 +143,8 @@ class MyFrame2(ctk.CTkFrame):
         self.entry.grid(row=0, column=0, pady=10, padx=20)
 
         # Frame Textbox
-        self.textbox = ctk.CTkTextbox(self, width=300, height=100)
-        self.textbox.insert("0.0", "No file selected.")
+        self.textbox = ctk.CTkTextbox(self, width=400, height=100)
+        self.textbox.insert("0.0", "No file selected.\n")
         self.textbox.configure(state=tk.DISABLED)
         self.textbox.grid(row=2, column=0, pady=10, padx=20)
 
@@ -134,6 +155,16 @@ class MyFrame2(ctk.CTkFrame):
         self.textbox.delete("0.0", tk.END)
         self.textbox.insert("0.0", text)
         self.textbox.configure(state=tk.DISABLED)
+    
+    def add_textbox_content(self, text):
+        self.textbox.configure(state=tk.NORMAL)
+        self.textbox.insert(tk.END, text + "\n")
+        self.textbox.configure(state=tk.DISABLED)
+
+class MyFrame3(ctk.CTkFrame):
+    def __init__(self, master, label="", **kwargs):
+        super().__init__(master, **kwargs)
+
 
 class App(ctk.CTk):
     def __init__(self):
@@ -153,7 +184,7 @@ class App(ctk.CTk):
 # Create the main application window
 window = App()
 window.title("XML File Processor")
-window.geometry("400x470")
+window.geometry("480x470")
 
 window.protocol("WM_DELETE_WINDOW", on_closing)
 window.mainloop()
