@@ -83,7 +83,7 @@ class MyFrame1(ctk.CTkFrame):
         
         # Frame Button
         self.button = ctk.CTkButton(self, text="Open MusicXML File", command=on_button_click, width=150, height=50)
-        self.button.pack(side="right", padx=20, pady=10)
+        self.button.grid(row=1, column=1, padx=10, pady=10)
         
     
 
@@ -99,12 +99,15 @@ class MyFrame1(ctk.CTkFrame):
         if tk_image:
             image_label = ctk.CTkLabel(self, image=tk_image, bg_color="transparent", text='')
             image_label.image = tk_image  # Keep a reference to avoid garbage collection
-            image_label.pack(side="left", padx=20, pady=10)
+            image_label.grid(row=1, column=0, padx=10, pady=10)
 
-        self.optionmenu = ctk.CTkOptionMenu(self, values=["option 1", "option 2"],
-                                         command=optionmenu_callback)
-        self.optionmenu.pack(side="right", padx=20, pady=30)
-        self.optionmenu.set("option 1")
+        self.optionmenu_var = tk.StringVar(value="None")
+        self.optionmenu = ctk.CTkOptionMenu(self, values=["Generic Braille File (brf)", "CAD Braille File ([Insert File Type])"],
+                                         command=optionmenu_callback, variable=self.optionmenu_var, width=200)
+        self.optionmenu.grid(row=2, column=1, padx=10, pady=20,)
+        self.optionmenu.set("Choose Output File Type")
+
+
         
 class MyFrame2(ctk.CTkFrame):
     def __init__(self, master, label="", **kwargs):
@@ -150,7 +153,7 @@ class App(ctk.CTk):
 # Create the main application window
 window = App()
 window.title("XML File Processor")
-window.geometry("400x450")
+window.geometry("400x470")
 
 window.protocol("WM_DELETE_WINDOW", on_closing)
 window.mainloop()
