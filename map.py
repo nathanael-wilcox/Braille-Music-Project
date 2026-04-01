@@ -536,4 +536,4 @@ def makeStl(file: str, stl: str):
 song = parseFile("lyrics.musicxml")
 song.write("song.brf")
 
-makeStl("song.brf", "res.stl")
+# makeStl("song.brf", "res.stl")

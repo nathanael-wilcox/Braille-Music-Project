@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+    <title>Braille Music</title>
+  </head>
+  <body>
+    <script type="text/javascript">
+      async function main() {
+        let pyodide = await loadPyodide();
+        await pyodide.loadPackage("micropip");
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install("cadquery", (keep_going = true));
+        pyodide.runPython(`
+        import cadquery as cq
+        print(1 + 2)`);
+      }
+      main();
+    </script>
+  </body>
+</html>
