@@ -599,9 +599,8 @@ mesh = mr.loadMesh(outputFile + ".stl")
 mesh.packOptimally()
 settings = mr.DecimateSettings()
 
-settings.maxDeletedFaces = 1000
 settings.maxError = 0.05
 settings.subdivideParts = 64
 
 mr.decimateMesh(mesh, settings)
-mr.saveMesh(mesh, outputFile + "-d.stl")
+mr.saveMesh(mesh, outputFile + ".stl")
