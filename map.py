@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 import cadquery as cq
-# cadquery requires python 3.12
+import meshlib.mrmeshpy as mr
 
 # Character tables
 ascii = ["\u2800", "\u2801", "\u2802", "\u2803", "\u2804", "\u2805", "\u2806", "\u2807", "\u2808", "\u2809", "\u280a", "\u280b", "\u280c", "\u280d", "\u280e", "\u280f", "\u2810", "\u2811", "\u2812", "\u2813", "\u2814", "\u2815", "\u2816", "\u2817", "\u2818", "\u2819", "\u281a", "\u281b", "\u281c", "\u281d", "\u281e", "\u281f",
@@ -32,7 +32,7 @@ punctuation = {",": "2", ";": "23", "'": "3", ":": "25", "-": "36", ".": "256", 
                "!": "235", "oq": "236", "?": "236", "cq": "356", "(": "2356", ")": "2356", "/": "34"}
 
 # Max width of braille page
-LINE_WIDTH = 36
+LINE_WIDTH = 30
 
 
 # Object declarations (mainly useful for typecasting reasons)
@@ -70,6 +70,7 @@ class Measure:
         self.data = data
         self.lyrics = ""
         self.length = 0
+        self.lineBreak = False
 
     def addText(self, text: Text):
         self.data.append(text)
@@ -80,34 +81,43 @@ class Measure:
     def addLyrics(self, lyrics: str):
         self.lyrics = lyrics
 
+    def addLineBreak(self):
+        self.lineBreak = True
+
     def print(self, printNumber: bool, lastNote: int, key: list[Key]):
-        str = ""
+        string = ""
         firstNote = True
-        trimmedStr = ""
+        trimmedString = ""
         if printNumber:  # Prints the measure number if needed
-            str += getChar(symbols["number"]) + \
-                getChar(numbers[self.number]) + " "
+            if self.number in numbers:  # if number is single digit
+                string += getChar(symbols["number"]) + \
+                    getChar(numbers[self.number]) + " "
+            else:  # if number is double digiits
+                string += getChar(symbols["number"])
+                for s in list(str(self.number)):
+                    string += getChar(numbers[int(s)])
+                string += " "
         for d in self.data:  # For each item in the measure
             if isinstance(d, Rest):
                 length = d.length
                 if len(length.split()) == 1:  # If length is just one word
-                    str += getChar(symbols[length[0] + "r"])
-                    trimmedStr += getChar(symbols[length[0] + "r"])
+                    string += getChar(symbols[length[0] + "r"])
+                    trimmedString += getChar(symbols[length[0] + "r"])
                 elif length.split()[0] == "dotted":  # If length has dotted in front
-                    str += getChar(symbols[length.split()[1]
-                                   [0] + "r"]) + getChar(symbols["dot"])
-                    trimmedStr += getChar(symbols[length.split()
-                                          [1][0] + "r"]) + getChar(symbols["dot"])
+                    string += getChar(symbols[length.split()[1]
+                                              [0] + "r"]) + getChar(symbols["dot"])
+                    trimmedString += getChar(symbols[length.split()
+                                                     [1][0] + "r"]) + getChar(symbols["dot"])
             elif isinstance(d, Text):
                 if len(d.text.split()) == 1:
-                    str += ">" + d.text
+                    string += ">" + d.text
                     if d.text in dynamics:
-                        trimmedStr += ">" + d.text
+                        trimmedString += ">" + d.text
                 else:
                     if lastNote > 0:
-                        str += " >" + d.text + "> "
+                        string += " >" + d.text + "> "
                     else:
-                        str += ">" + d.text + "> "
+                        string += ">" + d.text + "> "
                 lastNote = -1
             elif isinstance(d, Note):
                 length = d.length
@@ -118,63 +128,63 @@ class Measure:
 
                 # Print start of slur character
                 if slur == "start":
-                    str += getChar(symbols["startSlur"])
-                    trimmedStr += getChar(symbols["startSlur"])
+                    string += getChar(symbols["startSlur"])
+                    trimmedString += getChar(symbols["startSlur"])
                 # Print slur character
                 elif slur == "slur":
-                    str += getChar(symbols["slur"])
-                    trimmedStr += getChar(symbols["slur"])
+                    string += getChar(symbols["slur"])
+                    trimmedString += getChar(symbols["slur"])
 
                 # If there is no last note or the last note was more than
                 # 7 half-steps away, print an octave marker
                 if abs(note - lastNote) > 7:
                     if not firstNote:
-                        trimmedStr += getChar(octaves[(note + 8) // 12])
-                    str += getChar(octaves[(note + 8) // 12])
+                        trimmedString += getChar(octaves[(note + 8) // 12])
+                    string += getChar(octaves[(note + 8) // 12])
                 # Else if the note is within 4 half-steps of the last note
                 # and is on a new octave print octave marker
                 elif abs(note - lastNote) > 4:
                     if not (note + 8) // 12 == (lastNote + 8) // 12:
                         if not firstNote:
-                            trimmedStr += getChar(octaves[(note + 8) // 12])
-                        str += getChar(octaves[(note + 8) // 12])
+                            trimmedString += getChar(octaves[(note + 8) // 12])
+                        string += getChar(octaves[(note + 8) // 12])
 
                 # Check for accidentals
                 if not sign == "none":
                     if sign == "natural":
                         # If note is natural, check for that note in the key signature and remove it
                         key = [k for k in key if k.note != note]
-                        str += getChar(symbols[sign])
-                        trimmedStr += getChar(symbols[sign])
+                        string += getChar(symbols[sign])
+                        trimmedString += getChar(symbols[sign])
                     else:
                         # Append the new accidental to the key signature
                         key.append(Key(sign, (note + 8) % 12))
-                        str += getChar(symbols[sign])
-                        trimmedStr += getChar(symbols[sign])
+                        string += getChar(symbols[sign])
+                        trimmedString += getChar(symbols[sign])
 
                 if len(length.split()) == 1:
-                    str += makeNote(note, length, key)
-                    trimmedStr += makeNote(note, length, key)
+                    string += makeNote(note, length, key)
+                    trimmedString += makeNote(note, length, key)
                 elif length.split()[0] == "dotted":
-                    str += makeNote(note, length.split()
-                                    [1], key) + getChar(symbols["dot"])
-                    trimmedStr += makeNote(note, length.split()
-                                           [1], key) + getChar(symbols["dot"])
+                    string += makeNote(note, length.split()
+                                       [1], key) + getChar(symbols["dot"])
+                    trimmedString += makeNote(note, length.split()
+                                              [1], key) + getChar(symbols["dot"])
 
                 # Print end of slur character
                 if slur == "end":
-                    str += getChar(symbols["endSlur"])
-                    trimmedStr += getChar(symbols["endSlur"])
+                    string += getChar(symbols["endSlur"])
+                    trimmedString += getChar(symbols["endSlur"])
 
                 # Print tie character
                 if tie:
-                    str += getChar(symbols["tie"])
-                    trimmedStr += getChar(symbols["tie"])
+                    string += getChar(symbols["tie"])
+                    trimmedString += getChar(symbols["tie"])
 
                 lastNote = note
                 firstNote = False
-        self.length = len(str)
-        return [lastNote, str, trimmedStr]
+        self.length = len(string)
+        return [lastNote, string, trimmedString]
 
 
 # Example time - [3, 4]
@@ -186,12 +196,13 @@ class Song:
         self.text = text
         self.measures = measures
         self.measureSize = 16  # Determines how many measures are on a line
+        self.measureCount = 0
 
     def addMeasure(self, measure: Measure):
         self.measures.append(measure)
 
     def write(self, file: str):
-        res = ""
+        res = "   "
         if self.text:
             res += self.text + " "
         for k in self.key:  # Print every flat or sharp in the key signature
@@ -204,13 +215,6 @@ class Song:
             res += getChar(numbers[self.time[0]])
             res += getChar(shiftDown(numbers[self.time[1]]))
 
-        i = ((LINE_WIDTH - len(res)) // 2) + 3
-        if self.text:
-            while i > 0:
-                res = " " + res
-                i -= 1
-        else:
-            res = "  " + res
         res += "\n"
 
         i = 0
@@ -220,7 +224,12 @@ class Song:
         lastMeasure = ""
         lyrics = ""
         for m in self.measures:  # For each measure, print and check for new line
-            mData = m.print(i % self.measureSize == 0, lastNote, self.key)
+            self.measureCount += 1
+            if m.lineBreak:
+                self.measureCount = self.measureSize + 1
+                res += "\n"
+            mData = m.print(self.measureCount >=
+                            self.measureSize or self.measures.index(m) == 0, lastNote, self.key)
             hasLyrics = False
             if m.lyrics != "":
                 hasLyrics = True
@@ -243,13 +252,28 @@ class Song:
                     lyricLength = 0
                 if res.split()[-1][0:2] == getChar(symbols["repeat"]) + getChar(symbols["number"]):
                     # Get number of repeated measures and add 1
-                    res = res[0:-2] + getChar(numbers[list(numbers.keys())[list(numbers.values()).index(
-                        getDots(res.split(" ")[-2][2:]))] + 1])
+                    offset = res[-5:].index(getChar(symbols["number"]))
+                    number = res[-4+offset:].strip()
+                    res = res[0:-2] + incNumber(number, 1)
                     lastNote = -1
+                    runningLength += len(incNumber(number, 1)) - len(number)
+                elif res.split()[-1][0] == getChar(symbols["number"]) and res.split()[-1][-1] == getChar(symbols["wr"]):
+                    # Get number of repeated rests and add 1
+                    number = res.split()[-1][1:-1]
+                    offset = res[-5:].index(getChar(symbols["number"]))
+                    res = res[:-5+offset] + getChar(symbols["number"]) + \
+                        incNumber(number, 1) + getChar(symbols["wr"])
+                    lastNote = -1
+                    runningLength += len(incNumber(number, 1)) - len(number)
                 elif res.split()[-2] == getChar(symbols["repeat"]) and res.split()[-1] == getChar(symbols["repeat"]):
-                    res = res[:-4] + getChar(symbols["repeat"]) + getChar(
-                        symbols["number"]) + getChar(numbers[3])
-                    runningLength -= 3
+                    if res[-6] == getChar(symbols["wr"]):
+                        res = res[:-6] + getChar(
+                            symbols["number"]) + getChar(numbers[4]) + getChar(symbols["wr"])
+                        runningLength -= 3
+                    else:
+                        res = res[:-4] + getChar(symbols["repeat"]) + getChar(
+                            symbols["number"]) + getChar(numbers[3])
+                        runningLength -= 1
                     lastNote = -1
                 else:
                     res += getChar(symbols["repeat"])
@@ -263,7 +287,8 @@ class Song:
                 newLyrics = newLyrics.lower()
                 lyricLength += len(newLyrics)
                 if runningLength > LINE_WIDTH or (hasLyrics and lyricLength > LINE_WIDTH):
-                    mData = m.print(i % self.measureSize == 0, -1, self.key)
+                    mData = m.print(self.measureCount >=
+                                    self.measureSize, -1, self.key)
                     mData[1] = "  " + mData[1]
                     res += "\n"
                     runningLength = m.length
@@ -272,11 +297,13 @@ class Song:
                 lyrics += newLyrics
                 res += mData[1]
             lastMeasure = mData[2]
-            if not i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
-                res += " "
-            elif i % self.measureSize == self.measureSize - 1 and not i == len(self.measures) - 1:
+            if self.measureCount >= self.measureCount:
+                self.measureCount = 0
+            if self.measureCount == self.measureSize and not i == len(self.measures) - 1:
                 res += "\n"
                 lastNote = -1
+            else:
+                res += " "
             i += 1
 
         res += getChar(symbols["db"])  # Print double bar line
@@ -323,7 +350,24 @@ def getAscii(code: str):  # Returns the braille ascii character for the provided
     return str
 
 
+def getNumber(code: str):  # returns the number for a given dot code
+    return list(numbers.values()).index(code)
+
+
+def incNumber(char: str, inc: int):  # Takes a braille number and returns the number higher
+    string = ""
+    for c in char:
+        string += str(getNumber(dots[chars.index(c)]))
+    string = str(int(string) + inc)
+    newNumber = ""
+    for c in string:
+        newNumber += chars[dots.index(numbers[int(c)])]
+    return newNumber
+
+
 # Combines note dot code with length code and checks for accidentals
+
+
 def makeNote(note: int, length: str, key: list[Key]):
     for k in key:
         if (note + 8) % 12 == k.note:
@@ -413,6 +457,9 @@ def parseFile(file: str):
                 tag = c.find("./direction-type/dynamics")
                 if tag is not None and tag[0] is not None:
                     m.addText(Text(tag[0].tag))
+                tag = c.find("./direction-type/rehearsal")
+                if tag is not None:
+                    m.addLineBreak()
                 tag = c.find("./direction-type/wedge")
                 if tag is not None and tag.attrib["type"] is not None:
                     if tag.attrib["type"] == "crescendo":
@@ -513,7 +560,7 @@ def makeStl(file: str, stl: str):
             curWidth = 0
             for j, char in enumerate(line):
                 curWidth += 1
-                charDots = getDots(char)
+                charDots = getDots(char.lower())
                 for d in charDots:
                     dv = list(dotValues[int(d)-1])
                     dv[0] += i*e
@@ -528,25 +575,33 @@ def makeStl(file: str, stl: str):
                  .fillet(r)
                  )
 
-        plate2 = (cq.Workplane("XY")
-                  .box(height * 2 * a + (height - 1) * (e - 2 * a) + dia + pad, width * a + (width - 1) * (l - a) + dia + pad, th)
-                  .translate((0, 0, dh))
-                  )
-
         result = (cq.Workplane("XY")
                   .pushPoints(points)
-                  .sphere(dr)
-                  .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh - 0.1)))
-                  .split(True, False)
-                  .intersect(plate2)
+                  .cylinder(dh * 2, dr)
+                  .faces("+Z")
+                  .edges()
+                  .fillet(dr * 2/3)
+                  .translate((-e * (height - 1)/2, -l * (width - 1)/2, dh))
                   .union(plate)
                   )
-        # .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh)))
 
         cq.exporters.export(result, stl)
 
 
+outputFile = "triptych"
 # parse the file and make it into an .stl file
-song = parseFile("lyrics.musicxml")
-song.write("song.brf")
-makeStl("song.brf", "res.stl")
+# song = parseFile("Triptych.musicxml")
+# song.write(outputFile + ".brf")
+# makeStl(outputFile + ".brf", outputFile + ".stl")
+
+# simplify the stl file
+mesh = mr.loadMesh(outputFile + ".stl")
+mesh.packOptimally()
+settings = mr.DecimateSettings()
+
+settings.maxDeletedFaces = 1000
+settings.maxError = 0.05
+settings.subdivideParts = 64
+
+mr.decimateMesh(mesh, settings)
+mr.saveMesh(mesh, outputFile + "-d.stl")
