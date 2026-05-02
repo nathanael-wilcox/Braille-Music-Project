@@ -1,6 +1,8 @@
 import xml.etree.ElementTree as ET
 import cadquery as cq
+# cadquery requires python 3.12
 
+# Character tables
 ascii = ["\u2800", "\u2801", "\u2802", "\u2803", "\u2804", "\u2805", "\u2806", "\u2807", "\u2808", "\u2809", "\u280a", "\u280b", "\u280c", "\u280d", "\u280e", "\u280f", "\u2810", "\u2811", "\u2812", "\u2813", "\u2814", "\u2815", "\u2816", "\u2817", "\u2818", "\u2819", "\u281a", "\u281b", "\u281c", "\u281d", "\u281e", "\u281f",
          "\u2820", "\u2821", "\u2822", "\u2823", "\u2824", "\u2825", "\u2826", "\u2827", "\u2828", "\u2829", "\u282a", "\u282b", "\u282c", "\u282d", "\u282e", "\u282f", "\u2830", "\u2831", "\u2832", "\u2833", "\u2834", "\u2835", "\u2836", "\u2837", "\u2838", "\u2839", "\u283a", "\u283b", "\u283c", "\u283d", "\u283e", "\u283f"]
 dots = ["", "1", "2", "12", "3", "13", "23", "123", "4", "14", "24", "124", "34", "134", "234", "1234", "5", "15", "25", "125", "35", "135", "235", "1235", "45", "145", "245", "1245", "345", "1345", "2345", "12345", "6", "16",
@@ -29,9 +31,11 @@ dynamics = ["pppppp", "ppppp", "pppp", "ppp", "pp", "p", "mp", "mf", "f", "ff", 
 punctuation = {",": "2", ";": "23", "'": "3", ":": "25", "-": "36", ".": "256", "_": "6",
                "!": "235", "oq": "236", "?": "236", "cq": "356", "(": "2356", ")": "2356", "/": "34"}
 
+# Max width of braille page
 LINE_WIDTH = 36
 
 
+# Object declarations (mainly useful for typecasting reasons)
 class Key:
     def __init__(self, type: str, note: int):
         self.type = type
@@ -291,6 +295,7 @@ class Song:
                             lyricLines[x - 1] + "\n  " + line.strip() + "\n")
 
 
+# Utility functions
 def shiftDown(code: str):  # Shifts a dot code down by one
     newCode = ""
     for c in code:
@@ -338,7 +343,7 @@ def handleXML(input: str | None):
     return output
 
 
-# Parsing the MusicXML file
+# Parsing the MusicXML file into .brf
 def parseFile(file: str):
     tree = ET.parse(file)
     root = tree.getroot()
@@ -482,25 +487,26 @@ def parseFile(file: str):
     return song
 
 
+# Converts .brf into .stl
 def makeStl(file: str, stl: str):
     with open(file, "r") as f:
-        th = 1.2
-        dia = 1.6
-        a = 2.5
-        l = 6.0
-        e = 10
-        dr = 0.8
-        dh = 0.6
-        r = 0.6
-        pad = 8
+        th = 1.2  # plate thickness
+        dia = 1.6  # dot diameter
+        a = 2.5  # dot offset (between each dot)
+        l = 6.0  # character offset (between each set of dots)
+        e = 10.0  # line height
+        dr = dia / 2  # dot radius
+        dh = 0.6  # dot height
+        r = 0.6  # radius for plate's rounded edge
+        pad = 8.0  # margin
         dotValues = [(-a, -a/2), (0, -a/2), (a, -a/2),
-                     (-a, a/2), (0, a/2), (a, a/2)]
-        points = []
+                     (-a, a/2), (0, a/2), (a, a/2)]  # guide for dot spacing
+        points = []  # gets filled with coordinates for each braille dot
 
-        width = 0
-        # width = LINE_WIDTH
-        height = 0
+        width = 0  # plate width (set programmatically)
+        height = 0  # plate height (set programmatically)
 
+        # fill braille dot coordinates and set plate width and height
         for i, line in enumerate(f):
             line = line.rstrip()
             height += 1
@@ -522,18 +528,25 @@ def makeStl(file: str, stl: str):
                  .fillet(r)
                  )
 
+        plate2 = (cq.Workplane("XY")
+                  .box(height * 2 * a + (height - 1) * (e - 2 * a) + dia + pad, width * a + (width - 1) * (l - a) + dia + pad, th)
+                  .translate((0, 0, dh))
+                  )
+
         result = (cq.Workplane("XY")
                   .pushPoints(points)
                   .sphere(dr)
-                  .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh)))
+                  .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh - 0.1)))
                   .split(True, False)
+                  .intersect(plate2)
                   .union(plate)
                   )
+        # .translate((-e * (height - 1)/2, -l * (width - 1)/2, th/2 - (dr - dh)))
 
         cq.exporters.export(result, stl)
 
 
+# parse the file and make it into an .stl file
 song = parseFile("lyrics.musicxml")
 song.write("song.brf")
-
-# makeStl("song.brf", "res.stl")
+makeStl("song.brf", "res.stl")
